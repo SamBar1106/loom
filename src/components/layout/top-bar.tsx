@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { BellIcon, CheckIcon, ChevronDownIcon, SearchIcon } from "lucide-react";
-import { toast } from "sonner";
 import { useTenant } from "@/app/tenant-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,15 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useDashboard, useInbox } from "@/lib/api/hooks";
+import { useDashboard, useInbox, useSignOut } from "@/lib/api/hooks";
 import { formatRelative } from "@/lib/format";
 import { tenantPath } from "@/lib/paths";
 
 export function TopBar() {
   const { tenant, tenants, user } = useTenant();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const signOut = useSignOut();
   const location = useLocation();
   const [params] = useSearchParams();
   const urlQuery = params.get("q") ?? "";
@@ -142,7 +144,15 @@ export function TopBar() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem
-                onClick={() => toast("This sample session stays signed in.")}
+                disabled={signOut.isPending}
+                onClick={() => {
+                  signOut.mutate(undefined, {
+                    onSuccess: () => {
+                      queryClient.clear();
+                      navigate("/sign-in", { replace: true });
+                    },
+                  });
+                }}
               >
                 Sign out
               </DropdownMenuItem>

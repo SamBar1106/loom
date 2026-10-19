@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
+import { signIn } from "./sign-in";
 
 const widths = [1024, 1280] as const;
 
@@ -10,7 +11,7 @@ test.beforeAll(async () => {
 for (const width of widths) {
   test(`captures the admin at ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/t/daykodee");
+    await signIn(page);
     await expect(page.getByRole("heading", { name: "Welcome back, Alex" })).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     await page.screenshot({
@@ -38,6 +39,7 @@ for (const width of widths) {
 
 test("filters products, edits a draft, and isolates tenants", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page);
   await page.goto("/t/daykodee/products");
   await page.getByRole("textbox", { name: "Search products", exact: true }).fill("tote");
   await expect(page.getByRole("link", { name: /Sample Tote Bag/ })).toBeVisible();
