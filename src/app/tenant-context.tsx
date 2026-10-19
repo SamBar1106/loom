@@ -3,6 +3,7 @@ import { Navigate, Outlet, useParams } from "react-router-dom";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageSkeleton, QueryError } from "@/components/query-state";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { ApiError } from "@/lib/api/client";
 import { useSession, useTenants } from "@/lib/api/hooks";
 import type { SessionUser, Tenant } from "@/lib/api/types";
 
@@ -54,6 +55,10 @@ export function TenantLayout() {
         <PageSkeleton />
       </div>
     );
+  }
+
+  if (session.error instanceof ApiError && session.error.status === 401) {
+    return <Navigate to="/sign-in" replace />;
   }
 
   if (session.error || tenantsQuery.error || !session.data) {

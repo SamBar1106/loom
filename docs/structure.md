@@ -1,6 +1,6 @@
 # Loom frontend structure
 
-Loom is a Vite single-page app. Tenant data is not stored in the browser except for edits made during the session against the in-memory mock.
+Loom is a Vite single-page app. Tenant data is not stored in the browser except for edits made during the session against the in-memory mock. The mock also stores the signed-in sample name and email in `sessionStorage` so a refresh stays signed in. Passwords and tokens are not stored.
 
 ```
 openapi.yaml                 HTTP contract
@@ -9,24 +9,33 @@ docs/structure.md            This file
 docs/screenshots/            Playwright captures at 1024 and 1280
 e2e/admin.spec.ts            Screenshot and interaction checks
 src/main.tsx                 Router, React Query, tooltip, toasts
-src/app/app.tsx              Route table under /t/:tenantSlug
+src/app/app.tsx              Route table. Public auth routes, then a guard
+src/app/require-auth.tsx     Sends signed-out visitors to /sign-in
 src/app/tenant-context.tsx   Resolves the slug, applies accent CSS variables
 src/lib/api/types.ts         Types kept in sync with openapi.yaml
-src/lib/api/client.ts        fetch or mock, always sends X-Tenant-Id
+src/lib/api/client.ts        fetch or mock, credentials include, X-Tenant-Id
 src/lib/api/hooks.ts         React Query hooks, keys include tenant id
+src/lib/api/sample-account.ts  Fake preview email and password
 src/lib/api/mock/seed.ts     Fictional catalogs for two tenants
+src/lib/api/mock/auth.ts     Session, register, and Google mock routes
 src/lib/api/mock/dispatch.ts Path router that implements the contract
 src/components/ui/           shadcn/ui components
+src/components/auth/         Sign-in card, password field, Google button
 src/components/layout/       Sidebar, header, shell
-src/pages/                   Home, products, edit, inventory, categories,
-                             orders, inbox, settings, payments
+src/pages/                   Sign-in, create account, home, products, edit,
+                             inventory, categories, orders, inbox, settings,
+                             payments
 ```
 
 ## Routes
 
 | Path | Screen |
 | --- | --- |
-| `/` | Redirects to `/t/daykodee` |
+| `/sign-in` | Email and password sign-in |
+| `/sign-up` | Create account |
+| `/forgot-password` | Placeholder. Reset is not available |
+| `/v1/auth/google/start` | Preview handoff when no API origin is set |
+| `/` | Redirects to `/t/daykodee` after sign-in |
 | `/t/:tenantSlug` | Home overview |
 | `/t/:tenantSlug/orders` | Orders, empty in the sample data |
 | `/t/:tenantSlug/products` | Searchable product table |
@@ -50,7 +59,9 @@ The header switcher keeps the current section when the destination tenant can sh
 
 ## API client
 
-`apiRequest` builds the query string and the `X-Tenant-Id` header. If `VITE_API_BASE_URL` is empty, `mockDispatch` returns a `Response`. If it is set, the same request is sent with `fetch` and `credentials: "include"`. Pages never import the mock database.
+`apiRequest` builds the query string and the `X-Tenant-Id` header. If `VITE_API_BASE_URL` is empty, `mockDispatch` returns a `Response`. If it is set, the same request is sent with `fetch` and `credentials: "include"`. Pages never import the mock database. Continue with Google assigns `window.location` to `{API_BASE}/v1/auth/google/start`.
+
+Signed-out visits to `/` and `/t/:tenantSlug` redirect to `/sign-in`. The header menu signs out with `DELETE /v1/auth/session`.
 
 ## Sample data
 

@@ -18,7 +18,9 @@ import type {
   ProductPatch,
   ProductVariant,
   ProductWrite,
+  RegisterRequest,
   Session,
+  SignInRequest,
   StoreSettings,
   Tenant,
   VariantPatch,
@@ -28,6 +30,38 @@ export function useSession() {
   return useQuery({
     queryKey: ["session"],
     queryFn: () => apiRequest<Session>("/v1/auth/session"),
+  });
+}
+
+export function useSignIn() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SignInRequest) =>
+      apiRequest<Session>("/v1/auth/session", { method: "POST", body }),
+    onSuccess: (session) => {
+      queryClient.setQueryData(["session"], session);
+    },
+  });
+}
+
+export function useRegister() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RegisterRequest) =>
+      apiRequest<Session>("/v1/auth/register", { method: "POST", body }),
+    onSuccess: (session) => {
+      queryClient.setQueryData(["session"], session);
+    },
+  });
+}
+
+export function useSignOut() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiRequest<void>("/v1/auth/session", { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.clear();
+    },
   });
 }
 

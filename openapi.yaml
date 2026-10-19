@@ -4,9 +4,13 @@ info:
   version: 0.1.0
   summary: Multi-tenant admin API for the Loom store dashboard.
   description: |
-    Contract for the Loom admin frontend. The backend is not implemented yet.
+    Contract for the Loom admin frontend, aligned with loom-api.
     Every tenant-owned route requires the `X-Tenant-Id` header. The UI resolves
     a tenant slug from `/t/{tenantSlug}` and sends that tenant's id on each call.
+
+    Sessions use the HttpOnly `loom_session` cookie. The browser calls `fetch`
+    with `credentials: "include"` and does not store tokens in localStorage.
+    Google sign-in is a browser navigation to `{origin}/v1/auth/google/start`.
 
     Leave `VITE_API_BASE_URL` unset to use the in-memory mock that implements this
     contract. Set it to an origin such as `http://127.0.0.1:8000` to call a live API.
@@ -33,7 +37,7 @@ paths:
     get:
       tags: [Auth]
       operationId: getSession
-      summary: Current sample session
+      summary: Current session
       security: []
       responses:
         "200":
@@ -47,19 +51,14 @@ paths:
     post:
       tags: [Auth]
       operationId: createSession
-      summary: Start a session
+      summary: Sign in with email and password
       security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [email]
-              properties:
-                email:
-                  type: string
-                  format: email
+              $ref: "#/components/schemas/SignInRequest"
       responses:
         "200":
           description: Session cookie set. Body matches GET /v1/auth/session.
@@ -72,15 +71,107 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Session"
-        "401":
+        "400":
           $ref: "#/components/responses/Error"
+        "401":
+          description: Email or password did not match. Message is "Incorrect email or password."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
     delete:
       tags: [Auth]
       operationId: deleteSession
-      summary: End a session
+      summary: Sign out
       responses:
         "204":
-          description: Session cleared.
+          description: Session cleared and the `loom_session` cookie expired.
+  /v1/auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Create an account and start a session
+      security: []
+      description: |
+        Confirm password is checked in the browser and is not part of this body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Account created and session cookie set.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly `loom_session` cookie. The mock does not set a cookie.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/auth/google/start:
+    get:
+      tags: [Auth]
+      operationId: startGoogleAuth
+      summary: Begin Google sign-in
+      security: []
+      description: |
+        Browser navigation, not a fetch. The response redirects to Google's
+        authorization URL. No tokens are returned to the page.
+      responses:
+        "302":
+          description: Redirect to Google. When Google is not configured, the API returns an error envelope instead of redirecting.
+          headers:
+            Location:
+              schema:
+                type: string
+              description: Google OAuth authorization URL.
+  /v1/auth/google/callback:
+    get:
+      tags: [Auth]
+      operationId: finishGoogleAuth
+      summary: Finish Google sign-in
+      security: []
+      description: |
+        Google redirects the browser here. On success the API sets the
+        HttpOnly `loom_session` cookie and redirects to the app. The frontend
+        does not read `code` or `state`.
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Cookie set and browser redirected into the app, or back to sign-in on failure.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly `loom_session` cookie on success.
+            Location:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Error"
   /v1/tenants:
     get:
       tags: [Tenants]
@@ -694,7 +785,7 @@ components:
       type: apiKey
       in: cookie
       name: loom_session
-      description: HttpOnly session cookie issued by POST /v1/auth/session.
+      description: HttpOnly session cookie issued by POST /v1/auth/session, POST /v1/auth/register, or GET /v1/auth/google/callback.
   parameters:
     TenantHeader:
       name: X-Tenant-Id
@@ -832,6 +923,31 @@ components:
         expiresAt:
           type: string
           format: date-time
+    SignInRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Full name. The confirm-password field stays in the browser.
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
     Tenant:
       type: object
       required: [id, slug, name, initials, accent, accentForeground]

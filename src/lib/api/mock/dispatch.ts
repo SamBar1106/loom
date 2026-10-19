@@ -19,6 +19,7 @@ import type {
   VariantPatch,
   VariantWrite,
 } from "@/lib/api/types";
+import { handleAuth, hasMockSession, resetAuthMock } from "@/lib/api/mock/auth";
 import { createSeed, type TenantBucket } from "@/lib/api/mock/seed";
 
 export type MockRequest = {
@@ -323,19 +324,6 @@ function listProducts(bucket: TenantBucket, query: URLSearchParams): Response {
   return ok(page);
 }
 
-function sessionResponse(): Response {
-  return ok({
-    user: {
-      id: "usr_sample_alex",
-      name: "Alex Sample",
-      email: "alex.sample@example.com",
-      avatarInitials: "AS",
-      tenantIds: [...buckets.keys()],
-    },
-    expiresAt: "2026-10-19T23:00:00.000Z",
-  });
-}
-
 function isDashboardRange(value: string | null): value is DashboardRange {
   return value === "today" || value === "7d" || value === "30d" || value === null;
 }
@@ -348,30 +336,6 @@ type Route = {
 };
 
 const routes: Route[] = [
-  {
-    method: "GET",
-    pattern: /^\/v1\/auth\/session$/,
-    tenant: false,
-    handle: () => sessionResponse(),
-  },
-  {
-    method: "POST",
-    pattern: /^\/v1\/auth\/session$/,
-    tenant: false,
-    handle: (_bucket, _match, request) => {
-      const email = isRecord(request.body) ? request.body.email : undefined;
-      if (email !== "alex.sample@example.com") {
-        return error(401, "unauthenticated", "Use the sample account alex.sample@example.com.");
-      }
-      return sessionResponse();
-    },
-  },
-  {
-    method: "DELETE",
-    pattern: /^\/v1\/auth\/session$/,
-    tenant: false,
-    handle: () => empty(),
-  },
   {
     method: "GET",
     pattern: /^\/v1\/tenants$/,
@@ -861,6 +825,11 @@ const routes: Route[] = [
 
 export async function mockDispatch(request: MockRequest): Promise<Response> {
   const path = request.path.split("?")[0] ?? request.path;
+  const auth = handleAuth({ ...request, path }, [...buckets.keys()]);
+  if (auth) return auth;
+  if (!hasMockSession()) {
+    return error(401, "unauthenticated", "Sign in to continue.");
+  }
   for (const route of routes) {
     if (route.method !== request.method) continue;
     const match = route.pattern.exec(path);
@@ -877,4 +846,5 @@ export function resetMockStore(): void {
   buckets.clear();
   for (const bucket of createSeed()) buckets.set(bucket.tenant.id, bucket);
   idCounter = 100;
+  resetAuthMock();
 }

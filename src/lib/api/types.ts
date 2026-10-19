@@ -48,6 +48,17 @@ export type Session = {
   expiresAt: string;
 };
 
+export type SignInRequest = {
+  email: string;
+  password: string;
+};
+
+export type RegisterRequest = {
+  name: string;
+  email: string;
+  password: string;
+};
+
 export type Tenant = {
   id: string;
   slug: string;

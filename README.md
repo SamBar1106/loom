@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173). The app redirects to `/t/daykodee`.
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173). Signed-out visitors land on `/sign-in`. The sample account is `alex.sample@example.com` / `sample-password`. After sign-in the app opens `/t/daykodee`.
 
 ```bash
 npm run lint
@@ -35,7 +35,7 @@ Copy [`.env.example`](.env.example) to `.env` and set the origin:
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-Restart Vite after changing it. The client keeps the same paths and sends `X-Tenant-Id` on every tenant-owned call. With the variable unset, the mock handles those paths inside the browser.
+Restart Vite after changing it. The client keeps the same paths, sends `credentials: "include"`, and sends `X-Tenant-Id` on every tenant-owned call. It does not store tokens in `localStorage`. Continue with Google navigates the browser to `{origin}/v1/auth/google/start`. With the variable unset, the mock handles those paths inside the browser.
 
 See [docs/api-contract.md](docs/api-contract.md) and [docs/structure.md](docs/structure.md).
 
