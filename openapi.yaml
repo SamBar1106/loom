@@ -1,0 +1,1482 @@
+openapi: 3.1.0
+info:
+  title: Loom Admin API
+  version: 0.1.0
+  summary: Multi-tenant admin API for the Loom store dashboard.
+  description: |
+    Contract for the Loom admin frontend. The backend is not implemented yet.
+    Every tenant-owned route requires the `X-Tenant-Id` header. The UI resolves
+    a tenant slug from `/t/{tenantSlug}` and sends that tenant's id on each call.
+
+    Leave `VITE_API_BASE_URL` unset to use the in-memory mock that implements this
+    contract. Set it to an origin such as `http://127.0.0.1:8000` to call a live API.
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local API origin. Not deployed by this repository.
+tags:
+  - name: Auth
+  - name: Tenants
+  - name: Dashboard
+  - name: Products
+  - name: Variants
+  - name: Options
+  - name: Inventory
+  - name: Categories
+  - name: Orders
+  - name: Inbox
+  - name: Settings
+  - name: Payments
+security:
+  - sessionCookie: []
+paths:
+  /v1/auth/session:
+    get:
+      tags: [Auth]
+      operationId: getSession
+      summary: Current sample session
+      security: []
+      responses:
+        "200":
+          description: Signed-in user and the tenants they can open.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "401":
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [Auth]
+      operationId: createSession
+      summary: Start a session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        "200":
+          description: Session cookie set. Body matches GET /v1/auth/session.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly `loom_session` cookie. The mock does not set a cookie.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "401":
+          $ref: "#/components/responses/Error"
+    delete:
+      tags: [Auth]
+      operationId: deleteSession
+      summary: End a session
+      responses:
+        "204":
+          description: Session cleared.
+  /v1/tenants:
+    get:
+      tags: [Tenants]
+      operationId: listTenants
+      summary: Tenants available to the current user
+      responses:
+        "200":
+          description: Tenant list. Does not require X-Tenant-Id.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Tenant"
+  /v1/tenants/{tenantId}:
+    get:
+      tags: [Tenants]
+      operationId: getTenant
+      summary: One tenant by id
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: Tenant branding.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/dashboard:
+    get:
+      tags: [Dashboard]
+      operationId: getDashboard
+      summary: Overview metrics and recent activity
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - name: range
+          in: query
+          schema:
+            $ref: "#/components/schemas/DashboardRange"
+          description: Defaults to today.
+      responses:
+        "200":
+          description: Sample overview for the tenant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardOverview"
+        "400":
+          $ref: "#/components/responses/Error"
+  /v1/products:
+    get:
+      tags: [Products]
+      operationId: listProducts
+      summary: Paginated product list
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Case-insensitive match on title or SKU.
+        - name: productType
+          in: query
+          schema:
+            $ref: "#/components/schemas/ProductType"
+        - name: inventoryStatus
+          in: query
+          schema:
+            $ref: "#/components/schemas/InventoryStatus"
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [title, updatedAt]
+            default: updatedAt
+      responses:
+        "200":
+          description: One page of product summaries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductPage"
+        "400":
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [Products]
+      operationId: createProduct
+      summary: Create a product and its first variant
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductWrite"
+      responses:
+        "201":
+          description: Created product. Price becomes the default variant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/Error"
+  /v1/products/{productId}:
+    get:
+      tags: [Products]
+      operationId: getProduct
+      summary: Product with options, variants, and media
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: Product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      tags: [Products]
+      operationId: updateProduct
+      summary: Update product fields
+      description: |
+        Partial update. When the product has one variant, `price`, `compareAtPrice`,
+        and `costOfGoods` update that variant. When it has several variants, those
+        three fields are ignored and clients patch variants individually.
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductPatch"
+      responses:
+        "200":
+          description: Updated product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    delete:
+      tags: [Products]
+      operationId: deleteProduct
+      summary: Delete a product
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "204":
+          description: Deleted.
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/products/{productId}/variants:
+    get:
+      tags: [Variants]
+      operationId: listVariants
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: Variants for the product.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Variant"
+        "404":
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [Variants]
+      operationId: createVariant
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantWrite"
+      responses:
+        "201":
+          description: Created variant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Variant"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/products/{productId}/variants/{variantId}:
+    patch:
+      tags: [Variants]
+      operationId: updateVariant
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+        - $ref: "#/components/parameters/VariantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantPatch"
+      responses:
+        "200":
+          description: Updated variant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Variant"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    delete:
+      tags: [Variants]
+      operationId: deleteVariant
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+        - $ref: "#/components/parameters/VariantId"
+      responses:
+        "204":
+          description: Deleted. The last variant cannot be deleted.
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/products/{productId}/options:
+    get:
+      tags: [Options]
+      operationId: listOptions
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: Option axes such as Size or Color.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Option"
+        "404":
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [Options]
+      operationId: createOption
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OptionWrite"
+      responses:
+        "201":
+          description: Created option.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Option"
+        "400":
+          $ref: "#/components/responses/Error"
+  /v1/products/{productId}/options/{optionId}:
+    patch:
+      tags: [Options]
+      operationId: updateOption
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+        - $ref: "#/components/parameters/OptionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OptionWrite"
+      responses:
+        "200":
+          description: Updated option.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Option"
+        "404":
+          $ref: "#/components/responses/Error"
+    delete:
+      tags: [Options]
+      operationId: deleteOption
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+        - $ref: "#/components/parameters/OptionId"
+      responses:
+        "204":
+          description: Deleted.
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/inventory:
+    get:
+      tags: [Inventory]
+      operationId: listInventory
+      summary: Variant stock rows
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: inventoryStatus
+          in: query
+          schema:
+            $ref: "#/components/schemas/InventoryStatus"
+      responses:
+        "200":
+          description: Inventory page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryPage"
+        "400":
+          $ref: "#/components/responses/Error"
+  /v1/inventory/{variantId}:
+    patch:
+      tags: [Inventory]
+      operationId: updateInventory
+      summary: Set on-hand quantity
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/VariantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [onHand]
+              properties:
+                onHand:
+                  type: integer
+                  minimum: 0
+      responses:
+        "200":
+          description: Updated inventory row. Available is onHand minus reserved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/categories:
+    get:
+      tags: [Categories]
+      operationId: listCategories
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      responses:
+        "200":
+          description: Categories with product counts.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Category"
+    post:
+      tags: [Categories]
+      operationId: createCategory
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryWrite"
+      responses:
+        "201":
+          description: Created category.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/Error"
+  /v1/categories/{categoryId}:
+    patch:
+      tags: [Categories]
+      operationId: updateCategory
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/CategoryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryWrite"
+      responses:
+        "200":
+          description: Updated category.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    delete:
+      tags: [Categories]
+      operationId: deleteCategory
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/CategoryId"
+      responses:
+        "204":
+          description: Deleted. Product category ids that pointed here are removed.
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/orders:
+    get:
+      tags: [Orders]
+      operationId: listOrders
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Order page. The sample tenants currently return an empty page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderPage"
+  /v1/orders/{orderId}:
+    get:
+      tags: [Orders]
+      operationId: getOrder
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/inbox:
+    get:
+      tags: [Inbox]
+      operationId: listInbox
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      responses:
+        "200":
+          description: Threads for the tenant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboxList"
+  /v1/inbox/{threadId}:
+    patch:
+      tags: [Inbox]
+      operationId: updateThread
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                unread:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated thread.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboxThread"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/store-settings:
+    get:
+      tags: [Settings]
+      operationId: getStoreSettings
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      responses:
+        "200":
+          description: Store profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreSettings"
+    patch:
+      tags: [Settings]
+      operationId: updateStoreSettings
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreSettingsPatch"
+      responses:
+        "200":
+          description: Updated profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreSettings"
+        "400":
+          $ref: "#/components/responses/Error"
+  /v1/payments-settings:
+    get:
+      tags: [Payments]
+      operationId: getPaymentsSettings
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      responses:
+        "200":
+          description: Payment preferences. Never includes secret keys.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentsSettings"
+    patch:
+      tags: [Payments]
+      operationId: updatePaymentsSettings
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentsSettingsPatch"
+      responses:
+        "200":
+          description: Updated preferences.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentsSettings"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: loom_session
+      description: HttpOnly session cookie issued by POST /v1/auth/session.
+  parameters:
+    TenantHeader:
+      name: X-Tenant-Id
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Tenant id, such as ten_daykodee. Missing header returns tenant_required.
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema:
+        type: string
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+    VariantId:
+      name: variantId
+      in: path
+      required: true
+      schema:
+        type: string
+    OptionId:
+      name: optionId
+      in: path
+      required: true
+      schema:
+        type: string
+    CategoryId:
+      name: categoryId
+      in: path
+      required: true
+      schema:
+        type: string
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 8
+  responses:
+    Error:
+      description: Error envelope.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+  schemas:
+    Money:
+      type: string
+      pattern: "^\\d+\\.\\d{2}$"
+      description: Decimal money with two fraction digits. Example 32.00.
+      examples: ["32.00"]
+    PageMeta:
+      type: object
+      required: [page, pageSize, total, totalPages]
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+          description: Zero when total is zero.
+    ErrorDetail:
+      type: object
+      required: [message]
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - unauthenticated
+                - tenant_required
+                - tenant_not_found
+                - not_found
+                - validation_error
+                - conflict
+                - request_failed
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                $ref: "#/components/schemas/ErrorDetail"
+    SessionUser:
+      type: object
+      required: [id, name, email, avatarInitials, tenantIds]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        avatarInitials:
+          type: string
+        tenantIds:
+          type: array
+          items:
+            type: string
+    Session:
+      type: object
+      required: [user, expiresAt]
+      properties:
+        user:
+          $ref: "#/components/schemas/SessionUser"
+        expiresAt:
+          type: string
+          format: date-time
+    Tenant:
+      type: object
+      required: [id, slug, name, initials, accent, accentForeground]
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+          description: Used in the UI path /t/{slug}.
+        name:
+          type: string
+        initials:
+          type: string
+        accent:
+          type: string
+          description: CSS color assigned to --primary for this tenant.
+        accentForeground:
+          type: string
+          description: CSS color assigned to --primary-foreground.
+    StoreStatus:
+      type: string
+      enum: [sample, live]
+    ProductType:
+      type: string
+      enum: [physical, digital, service]
+    InventoryStatus:
+      type: string
+      enum: [in_stock, low_stock, out_of_stock]
+      description: out_of_stock when available is 0. low_stock when available is 1 through 10. Otherwise in_stock.
+    DashboardRange:
+      type: string
+      enum: [today, 7d, 30d]
+    ActivityKind:
+      type: string
+      enum: [order, inventory, payment, review, automation]
+    OrderStatus:
+      type: string
+      enum: [open, paid, fulfilled, cancelled, refunded]
+    StoreSettings:
+      type: object
+      required: [storeName, contactEmail, supportPhone, addressLine, city, region, postalCode, timezone, currency, status]
+      properties:
+        storeName:
+          type: string
+        contactEmail:
+          type: string
+        supportPhone:
+          type: string
+        addressLine:
+          type: string
+        city:
+          type: string
+        region:
+          type: string
+        postalCode:
+          type: string
+        timezone:
+          type: string
+        currency:
+          type: string
+          examples: ["USD"]
+        status:
+          $ref: "#/components/schemas/StoreStatus"
+    StoreSettingsPatch:
+      type: object
+      properties:
+        storeName:
+          type: string
+        contactEmail:
+          type: string
+        supportPhone:
+          type: string
+        addressLine:
+          type: string
+        city:
+          type: string
+        region:
+          type: string
+        postalCode:
+          type: string
+        timezone:
+          type: string
+        currency:
+          type: string
+    PaymentsSettings:
+      type: object
+      required: [acceptCard, acceptManual, testMode, statementDescriptor, payoutAccountLabel]
+      properties:
+        acceptCard:
+          type: boolean
+        acceptManual:
+          type: boolean
+        testMode:
+          type: boolean
+        statementDescriptor:
+          type: string
+          maxLength: 22
+        payoutAccountLabel:
+          type: ["string", "null"]
+          description: Masked display label. Not an account number or secret.
+    PaymentsSettingsPatch:
+      type: object
+      properties:
+        acceptCard:
+          type: boolean
+        acceptManual:
+          type: boolean
+        testMode:
+          type: boolean
+        statementDescriptor:
+          type: string
+          maxLength: 22
+    Category:
+      type: object
+      required: [id, name, slug, productCount]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        productCount:
+          type: integer
+    CategoryWrite:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+    Option:
+      type: object
+      required: [id, name, values]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        values:
+          type: array
+          items:
+            type: string
+    OptionWrite:
+      type: object
+      required: [name, values]
+      properties:
+        name:
+          type: string
+        values:
+          type: array
+          items:
+            type: string
+    OptionValue:
+      type: object
+      required: [name, value]
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+    Variant:
+      type: object
+      required: [id, title, sku, price, compareAtPrice, costOfGoods, optionValues, onHand, reserved]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        sku:
+          type: string
+        price:
+          $ref: "#/components/schemas/Money"
+        compareAtPrice:
+          type: ["string", "null"]
+        costOfGoods:
+          type: ["string", "null"]
+        optionValues:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptionValue"
+        onHand:
+          type: integer
+          minimum: 0
+        reserved:
+          type: integer
+          minimum: 0
+    VariantWrite:
+      type: object
+      required: [title, sku, price]
+      properties:
+        title:
+          type: string
+        sku:
+          type: string
+        price:
+          $ref: "#/components/schemas/Money"
+        compareAtPrice:
+          type: ["string", "null"]
+        costOfGoods:
+          type: ["string", "null"]
+        optionValues:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptionValue"
+        onHand:
+          type: integer
+          minimum: 0
+        reserved:
+          type: integer
+          minimum: 0
+    VariantPatch:
+      type: object
+      properties:
+        title:
+          type: string
+        sku:
+          type: string
+        price:
+          $ref: "#/components/schemas/Money"
+        compareAtPrice:
+          type: ["string", "null"]
+        costOfGoods:
+          type: ["string", "null"]
+        optionValues:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptionValue"
+        onHand:
+          type: integer
+          minimum: 0
+    Media:
+      type: object
+      required: [id, url, alt, position]
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        alt:
+          type: string
+        position:
+          type: integer
+    MediaWrite:
+      type: object
+      required: [url, alt]
+      properties:
+        url:
+          type: string
+        alt:
+          type: string
+    Product:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - productType
+        - vendor
+        - tags
+        - primaryBadge
+        - categoryIds
+        - showInOnlineStore
+        - showInPointOfSale
+        - scheduleAvailability
+        - availableFrom
+        - price
+        - compareAtPrice
+        - costOfGoods
+        - currency
+        - taxGroup
+        - showPricePerUnit
+        - unitPriceLabel
+        - options
+        - variants
+        - media
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          maxLength: 150
+        description:
+          type: string
+        productType:
+          $ref: "#/components/schemas/ProductType"
+        vendor:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        primaryBadge:
+          type: ["string", "null"]
+        categoryIds:
+          type: array
+          items:
+            type: string
+        showInOnlineStore:
+          type: boolean
+        showInPointOfSale:
+          type: boolean
+        scheduleAvailability:
+          type: boolean
+        availableFrom:
+          type: ["string", "null"]
+        price:
+          $ref: "#/components/schemas/Money"
+          description: Lowest variant price.
+        compareAtPrice:
+          type: ["string", "null"]
+        costOfGoods:
+          type: ["string", "null"]
+        currency:
+          type: string
+        taxGroup:
+          type: ["string", "null"]
+        showPricePerUnit:
+          type: boolean
+        unitPriceLabel:
+          type: ["string", "null"]
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/Option"
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Variant"
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/Media"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProductWrite:
+      type: object
+      required: [title, price]
+      properties:
+        title:
+          type: string
+          maxLength: 150
+        description:
+          type: string
+        productType:
+          $ref: "#/components/schemas/ProductType"
+        vendor:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        primaryBadge:
+          type: ["string", "null"]
+        categoryIds:
+          type: array
+          items:
+            type: string
+        showInOnlineStore:
+          type: boolean
+        showInPointOfSale:
+          type: boolean
+        scheduleAvailability:
+          type: boolean
+        availableFrom:
+          type: ["string", "null"]
+        price:
+          $ref: "#/components/schemas/Money"
+        compareAtPrice:
+          type: ["string", "null"]
+        costOfGoods:
+          type: ["string", "null"]
+        taxGroup:
+          type: ["string", "null"]
+        showPricePerUnit:
+          type: boolean
+        unitPriceLabel:
+          type: ["string", "null"]
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/MediaWrite"
+    ProductPatch:
+      type: object
+      description: Same fields as ProductWrite, all optional.
+      properties:
+        title:
+          type: string
+          maxLength: 150
+        description:
+          type: string
+        productType:
+          $ref: "#/components/schemas/ProductType"
+        vendor:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        primaryBadge:
+          type: ["string", "null"]
+        categoryIds:
+          type: array
+          items:
+            type: string
+        showInOnlineStore:
+          type: boolean
+        showInPointOfSale:
+          type: boolean
+        scheduleAvailability:
+          type: boolean
+        availableFrom:
+          type: ["string", "null"]
+        price:
+          $ref: "#/components/schemas/Money"
+        compareAtPrice:
+          type: ["string", "null"]
+        costOfGoods:
+          type: ["string", "null"]
+        taxGroup:
+          type: ["string", "null"]
+        showPricePerUnit:
+          type: boolean
+        unitPriceLabel:
+          type: ["string", "null"]
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/MediaWrite"
+    ProductListItem:
+      type: object
+      required: [id, title, productType, vendor, sku, price, currency, variantCount, inventoryStatus, available, categoryNames, thumbnailUrl, updatedAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        productType:
+          $ref: "#/components/schemas/ProductType"
+        vendor:
+          type: string
+        sku:
+          type: ["string", "null"]
+        price:
+          $ref: "#/components/schemas/Money"
+        currency:
+          type: string
+        variantCount:
+          type: integer
+        inventoryStatus:
+          $ref: "#/components/schemas/InventoryStatus"
+        available:
+          type: integer
+          description: Sum of onHand minus reserved across variants.
+        categoryNames:
+          type: array
+          items:
+            type: string
+        thumbnailUrl:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+    ProductPage:
+      type: object
+      required: [data, page]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductListItem"
+        page:
+          $ref: "#/components/schemas/PageMeta"
+    InventoryItem:
+      type: object
+      required: [variantId, productId, productTitle, variantTitle, sku, onHand, reserved, available, status]
+      properties:
+        variantId:
+          type: string
+        productId:
+          type: string
+        productTitle:
+          type: string
+        variantTitle:
+          type: string
+        sku:
+          type: string
+        onHand:
+          type: integer
+        reserved:
+          type: integer
+        available:
+          type: integer
+        status:
+          $ref: "#/components/schemas/InventoryStatus"
+    InventoryPage:
+      type: object
+      required: [data, page]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryItem"
+        page:
+          $ref: "#/components/schemas/PageMeta"
+    OrderLine:
+      type: object
+      required: [title, quantity, unitPrice]
+      properties:
+        title:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          $ref: "#/components/schemas/Money"
+    Order:
+      type: object
+      required: [id, number, customerName, total, currency, status, createdAt, lineItems]
+      properties:
+        id:
+          type: string
+        number:
+          type: string
+        customerName:
+          type: string
+        total:
+          $ref: "#/components/schemas/Money"
+        currency:
+          type: string
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        createdAt:
+          type: string
+          format: date-time
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderLine"
+    OrderPage:
+      type: object
+      required: [data, page]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        page:
+          $ref: "#/components/schemas/PageMeta"
+    InboxThread:
+      type: object
+      required: [id, subject, preview, fromName, unread, receivedAt]
+      properties:
+        id:
+          type: string
+        subject:
+          type: string
+        preview:
+          type: string
+        fromName:
+          type: string
+        unread:
+          type: boolean
+        receivedAt:
+          type: string
+          format: date-time
+    InboxList:
+      type: object
+      required: [data, unreadCount]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/InboxThread"
+        unreadCount:
+          type: integer
+    Metric:
+      type: object
+      required: [key, label, value, deltaPercent, series]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        value:
+          type: string
+        deltaPercent:
+          type: number
+        series:
+          type: array
+          items:
+            type: number
+    Activity:
+      type: object
+      required: [id, title, detail, kind, occurredAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        detail:
+          type: string
+        kind:
+          $ref: "#/components/schemas/ActivityKind"
+        occurredAt:
+          type: string
+          format: date-time
+    DashboardOverview:
+      type: object
+      required: [range, setup, store, metrics, activity]
+      properties:
+        range:
+          $ref: "#/components/schemas/DashboardRange"
+        setup:
+          type: object
+          required: [completed, total]
+          properties:
+            completed:
+              type: integer
+            total:
+              type: integer
+        store:
+          type: object
+          required: [name, status, addressLine, contactEmail, supportPhone]
+          properties:
+            name:
+              type: string
+            status:
+              $ref: "#/components/schemas/StoreStatus"
+            addressLine:
+              type: string
+            contactEmail:
+              type: string
+            supportPhone:
+              type: string
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metric"
+        activity:
+          type: array
+          items:
+            $ref: "#/components/schemas/Activity"
