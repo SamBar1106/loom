@@ -59,6 +59,16 @@ export type RegisterRequest = {
   password: string;
 };
 
+export type RegisteredUser = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+export type RegisterResult = {
+  user: RegisteredUser;
+};
+
 export type Tenant = {
   id: string;
   slug: string;

@@ -79,6 +79,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Too many sign-in attempts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
     delete:
       tags: [Auth]
       operationId: deleteSession
@@ -90,10 +96,12 @@ paths:
     post:
       tags: [Auth]
       operationId: register
-      summary: Create an account and start a session
+      summary: Create an account
       security: []
       description: |
         Confirm password is checked in the browser and is not part of this body.
+        Registration is disabled by default and returns 403 until the server allows it.
+        A successful response does not start a session.
       requestBody:
         required: true
         content:
@@ -102,20 +110,31 @@ paths:
               $ref: "#/components/schemas/RegisterRequest"
       responses:
         "201":
-          description: Account created and session cookie set.
-          headers:
-            Set-Cookie:
-              schema:
-                type: string
-              description: HttpOnly `loom_session` cookie. The mock does not set a cookie.
+          description: Account created. Body is the new user. No session cookie.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Session"
-        "400":
-          $ref: "#/components/responses/Error"
+                $ref: "#/components/schemas/RegisterResult"
+        "403":
+          description: Sign-up is disabled. The UI shows "Sign-up is invite-only for now".
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "409":
           $ref: "#/components/responses/Error"
+        "422":
+          description: Validation failed. Code is validation_error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Too many create-account attempts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /v1/auth/google/start:
     get:
       tags: [Auth]
@@ -785,7 +804,7 @@ components:
       type: apiKey
       in: cookie
       name: loom_session
-      description: HttpOnly session cookie issued by POST /v1/auth/session, POST /v1/auth/register, or GET /v1/auth/google/callback.
+      description: HttpOnly session cookie issued by POST /v1/auth/session or GET /v1/auth/google/callback. POST /v1/auth/register does not issue it.
   parameters:
     TenantHeader:
       name: X-Tenant-Id
@@ -890,6 +909,8 @@ components:
                 - not_found
                 - validation_error
                 - conflict
+                - forbidden
+                - rate_limited
                 - request_failed
             message:
               type: string
@@ -948,6 +969,23 @@ components:
         password:
           type: string
           minLength: 8
+    RegisteredUser:
+      type: object
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+    RegisterResult:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/RegisteredUser"
     Tenant:
       type: object
       required: [id, slug, name, initials, accent, accentForeground]

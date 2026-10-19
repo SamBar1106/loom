@@ -21,6 +21,7 @@ export function SignInPage() {
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [rateLimited, setRateLimited] = useState(false);
 
   if (session.data) {
     return <Navigate to={readReturnPath(location.state)} replace />;
@@ -40,6 +41,12 @@ export function SignInPage() {
       {
         onSuccess: () => navigate(readReturnPath(location.state), { replace: true }),
         onError: (error) => {
+          if (error instanceof ApiError && error.status === 429) {
+            setRateLimited(true);
+            setPasswordError("");
+            return;
+          }
+          setRateLimited(false);
           setPasswordError(
             error instanceof ApiError && error.status === 401
               ? "Incorrect email or password."
@@ -65,6 +72,11 @@ export function SignInPage() {
       }
     >
       <form className="flex flex-col gap-4" noValidate onSubmit={onSubmit}>
+        {rateLimited ? (
+          <p role="alert" className="text-sm text-destructive">
+            Too many attempts, try again in a few minutes.
+          </p>
+        ) : null}
         <Field data-invalid={emailError ? true : undefined}>
           <FieldLabel htmlFor="email">Email</FieldLabel>
           <Input

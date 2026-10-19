@@ -17,6 +17,7 @@ src/lib/api/client.ts        fetch or mock, credentials include, X-Tenant-Id
 src/lib/api/hooks.ts         React Query hooks, keys include tenant id
 src/lib/api/sample-account.ts  Fake preview email and password
 src/lib/api/mock/seed.ts     Fictional catalogs for two tenants
+src/lib/preview-flags.ts     Preview switches for invite-only and rate limit
 src/lib/api/mock/auth.ts     Session, register, and Google mock routes
 src/lib/api/mock/dispatch.ts Path router that implements the contract
 src/components/ui/           shadcn/ui components

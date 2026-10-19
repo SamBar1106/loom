@@ -46,6 +46,28 @@ for (const width of widths) {
       fullPage: true,
     });
 
+    await page.getByLabel("Full name").fill("Casey Sample");
+    await page.getByLabel("Email").fill("casey.sample@example.com");
+    await page.getByLabel("Password", { exact: true }).fill(samplePassword);
+    await page.getByLabel("Confirm password").fill(samplePassword);
+    await page.getByRole("button", { name: "Create account", exact: true }).click();
+    await expect(page.getByText("Sign-up is invite-only for now")).toBeVisible();
+    await page.screenshot({
+      path: `docs/screenshots/sign-up-invite-${width}.png`,
+      fullPage: true,
+    });
+
+    await page.goto("/sign-in");
+    await page.getByRole("switch", { name: "Rate limit" }).click();
+    await page.getByLabel("Email").fill(sampleEmail);
+    await page.getByLabel("Password", { exact: true }).fill(samplePassword);
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page.getByText("Too many attempts, try again in a few minutes.")).toBeVisible();
+    await page.screenshot({
+      path: `docs/screenshots/sign-in-rate-limit-${width}.png`,
+      fullPage: true,
+    });
+
     const overflows = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     );
@@ -118,8 +140,59 @@ test("validates create account before it submits", async ({ page }) => {
   const confirm = page.getByLabel("Confirm password");
   await page.getByRole("button", { name: "Show password" }).first().click();
   await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "text");
-  await confirm.fill(samplePassword);
+  await expect(confirm).toBeVisible();
+});
+
+test("shows invite-only when create account is disabled", async ({ page }) => {
+  await page.goto("/sign-up");
+  await page.getByLabel("Full name").fill("Casey Sample");
+  await page.getByLabel("Email").fill("casey.sample@example.com");
+  await page.getByLabel("Password", { exact: true }).fill(samplePassword);
+  await page.getByLabel("Confirm password").fill(samplePassword);
   await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await expect(page.getByText("Sign-up is invite-only for now")).toBeVisible();
+  await expect(page.getByText("Sign-up is disabled.")).toHaveCount(0);
+  await expect(page.getByLabel("Full name")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Create account", exact: true })).toHaveCount(0);
+  await page.getByRole("link", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+});
+
+test("shows too many attempts for sign-in and create account", async ({ page }) => {
+  await page.goto("/sign-in");
+  await page.getByRole("switch", { name: "Rate limit" }).click();
+  await page.getByLabel("Email").fill(sampleEmail);
+  await page.getByLabel("Password", { exact: true }).fill(samplePassword);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByText("Too many attempts, try again in a few minutes.")).toBeVisible();
+  await expect(page.getByText("Incorrect email or password.")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/sign-in$/);
+
+  await page.goto("/sign-up");
+  await page.getByLabel("Full name").fill("Casey Sample");
+  await page.getByLabel("Email").fill("casey.sample@example.com");
+  await page.getByLabel("Password", { exact: true }).fill(samplePassword);
+  await page.getByLabel("Confirm password").fill(samplePassword);
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await expect(page.getByText("Too many attempts, try again in a few minutes.")).toBeVisible();
+  await expect(page.getByText("Sign-up is invite-only for now")).toHaveCount(0);
+  await expect(page.getByLabel("Full name")).toBeVisible();
+});
+
+test("creates an account when invite-only is turned off", async ({ page }) => {
+  await page.goto("/sign-up");
+  await page.getByRole("switch", { name: "Invite-only" }).click();
+  await page.getByLabel("Full name").fill("Casey Sample");
+  await page.getByLabel("Email").fill("casey.sample@example.com");
+  await page.getByLabel("Password", { exact: true }).fill(samplePassword);
+  await page.getByLabel("Confirm password").fill(samplePassword);
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await expect(page.getByText("Account created.")).toBeVisible();
+  await expect(page).toHaveURL(/\/sign-up$/);
+  await page.getByRole("link", { name: "Sign in" }).click();
+  await page.getByLabel("Email").fill("casey.sample@example.com");
+  await page.getByLabel("Password", { exact: true }).fill(samplePassword);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Welcome back, Casey" })).toBeVisible();
 });
 

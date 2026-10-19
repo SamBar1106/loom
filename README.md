@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173). Signed-out visitors land on `/sign-in`. The sample account is `alex.sample@example.com` / `sample-password`. After sign-in the app opens `/t/daykodee`.
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173). Signed-out visitors land on `/sign-in`. The sample account is `alex.sample@example.com` / `sample-password`. After sign-in the app opens `/t/daykodee`. Create account is invite-only until the Preview switch Invite-only is turned off. Rate limit shows the too-many-attempts state for sign-in and create account.
 
 ```bash
 npm run lint

@@ -46,21 +46,31 @@ The session is the HttpOnly `loom_session` cookie. `fetch` sends `credentials: "
 { "email": "alex.sample@example.com", "password": "sample-password" }
 ```
 
-`200` returns a `Session` and sets `loom_session`. A wrong email or password returns `401` with message `Incorrect email or password.` Missing fields return `400` `validation_error`.
+`200` returns a `Session` and sets `loom_session`. A wrong email or password returns `401` with message `Incorrect email or password.` Missing fields return `400` `validation_error`. Too many attempts return `429` `rate_limited`. The sign-in screen shows `Too many attempts, try again in a few minutes.`
 
-`POST /v1/auth/register` creates an account and a session:
+`POST /v1/auth/register` creates an account. It does not start a session.
 
 ```json
 { "name": "Alex Sample", "email": "alex.sample@example.com", "password": "sample-password" }
 ```
 
-`name` is the full name, 1–120 characters. `password` is at least 8 characters. Confirm password is checked in the browser and is not sent. `201` returns a `Session` and sets the cookie. A duplicate email returns `409` `conflict`.
+`name` is the full name, 1–120 characters. `password` is at least 8 characters. Confirm password is checked in the browser and is not sent.
+
+| Status | Meaning |
+| --- | --- |
+| `201` | `{ "user": { "id", "name", "email" } }`. No `loom_session` cookie. |
+| `403` | Registration is disabled. This is the default. The screen shows `Sign-up is invite-only for now` and a link back to sign in. |
+| `409` | That email already has an account. Code `conflict`. |
+| `422` | Validation failed. Code `validation_error`, with field details. |
+| `429` | Too many attempts. The screen shows `Too many attempts, try again in a few minutes.` |
 
 `DELETE /v1/auth/session` returns `204` and clears the cookie.
 
 `GET /v1/auth/google/start` is a browser navigation, not a `fetch`. The live API responds with `302` to Google. `GET /v1/auth/google/callback` receives `code`, `state`, and an optional `error`. On success it sets `loom_session` and redirects the browser back into the app. The page never reads those query values.
 
 The mock accepts only `alex.sample@example.com` / `sample-password`. It does not set a cookie. It keeps the signed-in name and email in `sessionStorage` under `loom.mock.session` so a refresh stays on the sample session. That value is not a token and not a password. Other mock routes return `401` until that preview session exists. With `VITE_API_BASE_URL` unset, Continue with Google navigates to `/v1/auth/google/start` on this origin, and the preview signs in the sample user. A configured API origin receives that navigation itself.
+
+Preview switches on the auth screens write `sessionStorage` key `loom.mock.flags`. `registerOpen` defaults to false, so create account returns `403`. Turning Invite-only off sets `registerOpen` to true and allows `201`. Rate limit defaults to off. Turning it on makes `POST /v1/auth/session` and `POST /v1/auth/register` return `429`. Rate limit is checked before the invite-only response.
 
 ## Lists and errors
 
@@ -87,7 +97,7 @@ Errors always use:
 }
 ```
 
-Codes: `unauthenticated`, `tenant_required`, `tenant_not_found`, `not_found`, `validation_error`, `conflict`, `request_failed`.
+Codes: `unauthenticated`, `tenant_required`, `tenant_not_found`, `not_found`, `validation_error`, `conflict`, `forbidden`, `rate_limited`, `request_failed`.
 
 Money fields are decimal strings with two fraction digits, such as `"32.00"`.
 

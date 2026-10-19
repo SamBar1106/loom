@@ -19,6 +19,7 @@ import type {
   ProductVariant,
   ProductWrite,
   RegisterRequest,
+  RegisterResult,
   Session,
   SignInRequest,
   StoreSettings,
@@ -45,13 +46,9 @@ export function useSignIn() {
 }
 
 export function useRegister() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: RegisterRequest) =>
-      apiRequest<Session>("/v1/auth/register", { method: "POST", body }),
-    onSuccess: (session) => {
-      queryClient.setQueryData(["session"], session);
-    },
+      apiRequest<RegisterResult>("/v1/auth/register", { method: "POST", body }),
   });
 }
 

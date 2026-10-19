@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuthDivider, AuthScreen, authLinkClassName } from "@/components/auth/auth-screen";
 import { GoogleButton } from "@/components/auth/google-button";
@@ -6,9 +7,10 @@ import { PasswordField } from "@/components/auth/password-field";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { ApiError } from "@/lib/api/client";
+import { ApiError, apiRequest } from "@/lib/api/client";
 import { useRegister, useSession } from "@/lib/api/hooks";
 import { readReturnPath } from "@/lib/return-path";
+import type { Session } from "@/lib/api/types";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -37,6 +39,7 @@ function hasErrors(errors: FieldErrors): boolean {
 export function SignUpPage() {
   const session = useSession();
   const register = useRegister();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const [name, setName] = useState("");
@@ -44,6 +47,9 @@ export function SignUpPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<FieldErrors>(emptyErrors);
+  const [inviteOnly, setInviteOnly] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [created, setCreated] = useState(false);
 
   if (session.data) {
     return <Navigate to={readReturnPath(location.state)} replace />;
@@ -58,8 +64,27 @@ export function SignUpPage() {
     register.mutate(
       { name: name.trim(), email: email.trim(), password },
       {
-        onSuccess: () => navigate(readReturnPath(location.state), { replace: true }),
+        onSuccess: () => {
+          void apiRequest<Session>("/v1/auth/session")
+            .then((nextSession) => {
+              queryClient.setQueryData(["session"], nextSession);
+              navigate(readReturnPath(location.state), { replace: true });
+            })
+            .catch(() => {
+              setCreated(true);
+            });
+        },
         onError: (error) => {
+          if (error instanceof ApiError && error.status === 403) {
+            setInviteOnly(true);
+            return;
+          }
+          if (error instanceof ApiError && error.status === 429) {
+            setRateLimited(true);
+            setErrors(emptyErrors);
+            return;
+          }
+          setRateLimited(false);
           if (error instanceof ApiError) {
             const nextErrors = { ...emptyErrors };
             for (const detail of error.details) {
@@ -77,6 +102,36 @@ export function SignUpPage() {
     );
   }
 
+  if (inviteOnly) {
+    return (
+      <AuthScreen
+        title="Create account"
+        footer={
+          <Link to="/sign-in" className={authLinkClassName}>
+            Sign in
+          </Link>
+        }
+      >
+        <p>Sign-up is invite-only for now</p>
+      </AuthScreen>
+    );
+  }
+
+  if (created) {
+    return (
+      <AuthScreen
+        title="Create account"
+        footer={
+          <Link to="/sign-in" className={authLinkClassName}>
+            Sign in
+          </Link>
+        }
+      >
+        <p>Account created.</p>
+      </AuthScreen>
+    );
+  }
+
   return (
     <AuthScreen
       title="Create account"
@@ -90,6 +145,11 @@ export function SignUpPage() {
       }
     >
       <form className="flex flex-col gap-4" noValidate onSubmit={onSubmit}>
+        {rateLimited ? (
+          <p role="alert" className="text-sm text-destructive">
+            Too many attempts, try again in a few minutes.
+          </p>
+        ) : null}
         <Field data-invalid={errors.name ? true : undefined}>
           <FieldLabel htmlFor="full-name">Full name</FieldLabel>
           <Input
