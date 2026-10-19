@@ -49,7 +49,7 @@ export function SignUpPage() {
   const [errors, setErrors] = useState<FieldErrors>(emptyErrors);
   const [inviteOnly, setInviteOnly] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
-  const [created, setCreated] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
 
   if (session.data) {
     return <Navigate to={readReturnPath(location.state)} replace />;
@@ -59,19 +59,23 @@ export function SignUpPage() {
     event.preventDefault();
     const next = validate({ name, email, password, confirm });
     setErrors(next);
+    setSessionError(false);
     if (hasErrors(next)) return;
 
     register.mutate(
       { name: name.trim(), email: email.trim(), password },
       {
         onSuccess: () => {
-          void apiRequest<Session>("/v1/auth/session")
-            .then((nextSession) => {
-              queryClient.setQueryData(["session"], nextSession);
+          void queryClient
+            .fetchQuery({
+              queryKey: ["session"],
+              queryFn: () => apiRequest<Session>("/v1/auth/session"),
+            })
+            .then(() => {
               navigate(readReturnPath(location.state), { replace: true });
             })
             .catch(() => {
-              setCreated(true);
+              setSessionError(true);
             });
         },
         onError: (error) => {
@@ -117,21 +121,6 @@ export function SignUpPage() {
     );
   }
 
-  if (created) {
-    return (
-      <AuthScreen
-        title="Create account"
-        footer={
-          <Link to="/sign-in" className={authLinkClassName}>
-            Sign in
-          </Link>
-        }
-      >
-        <p>Account created.</p>
-      </AuthScreen>
-    );
-  }
-
   return (
     <AuthScreen
       title="Create account"
@@ -148,6 +137,11 @@ export function SignUpPage() {
         {rateLimited ? (
           <p role="alert" className="text-sm text-destructive">
             Too many attempts, try again in a few minutes.
+          </p>
+        ) : null}
+        {sessionError ? (
+          <p role="alert" className="text-sm text-destructive">
+            Could not start the session.
           </p>
         ) : null}
         <Field data-invalid={errors.name ? true : undefined}>

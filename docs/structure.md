@@ -60,7 +60,7 @@ The header switcher keeps the current section when the destination tenant can sh
 
 ## API client
 
-`apiRequest` builds the query string and the `X-Tenant-Id` header. If `VITE_API_BASE_URL` is empty, `mockDispatch` returns a `Response`. If it is set, the same request is sent with `fetch` and `credentials: "include"`. Pages never import the mock database. Continue with Google assigns `window.location` to `{API_BASE}/v1/auth/google/start`.
+`apiRequest` builds the query string and the `X-Tenant-Id` header. When `VITE_USE_MOCK` is `true` or `1`, `mockDispatch` returns a `Response`. Otherwise the same request is sent with `fetch` and `credentials: "include"` to `VITE_API_BASE`. An empty base is the same origin. `VITE_API_BASE_URL` is the previous name and applies only when `VITE_API_BASE` is unset. Pages never import the mock database. Continue with Google assigns `window.location` to `{base}/v1/auth/google/start`.
 
 Signed-out visits to `/` and `/t/:tenantSlug` redirect to `/sign-in`. The header menu signs out with `DELETE /v1/auth/session`.
 

@@ -6,12 +6,17 @@ The FastAPI backend is not part of this repository. Pointing the frontend at it 
 
 ## Base URL
 
-| `VITE_API_BASE_URL` | Behavior |
+| Setting | Behavior |
 | --- | --- |
-| Unset | Requests stay in the browser and are answered by the mock. |
-| `http://127.0.0.1:8000` | `fetch` calls that origin with `credentials: "include"`. |
+| `VITE_USE_MOCK=true` | Requests stay in the browser and are answered by the mock. |
+| `VITE_API_BASE` empty, mock off | `fetch` calls this app's origin with `credentials: "include"`. |
+| `VITE_API_BASE=http://127.0.0.1:8000`, mock off | `fetch` calls that origin with `credentials: "include"`. |
 
-Paths are rooted at `/v1`. Example: `GET {base}/v1/products`.
+`VITE_API_BASE` defaults to empty. `VITE_API_BASE_URL` is the previous name and is used only when `VITE_API_BASE` is unset. Setting it does not enable the mock.
+
+`.env.development` and `.env.production` set `VITE_USE_MOCK=true`, so `npm run dev` and `npm run build` stay on the mock. A same-origin build is `VITE_USE_MOCK=false npm run build`. A value already set in the shell overrides those files.
+
+Paths are rooted at `/v1`. Example: `GET {base}/v1/products`. An empty base is a relative URL.
 
 ## Tenant scoping
 
@@ -48,7 +53,7 @@ The session is the HttpOnly `loom_session` cookie. `fetch` sends `credentials: "
 
 `200` returns a `Session` and sets `loom_session`. A wrong email or password returns `401` with message `Incorrect email or password.` Missing fields return `400` `validation_error`. Too many attempts return `429` `rate_limited`. The sign-in screen shows `Too many attempts, try again in a few minutes.`
 
-`POST /v1/auth/register` creates an account. It does not start a session.
+`POST /v1/auth/register` creates an account and sets the `loom_session` cookie. The body is the new user, not a `Session`. After `201` the app calls `GET /v1/auth/session` and opens the store. There is no second sign-in.
 
 ```json
 { "name": "Alex Sample", "email": "alex.sample@example.com", "password": "sample-password" }
@@ -58,7 +63,7 @@ The session is the HttpOnly `loom_session` cookie. `fetch` sends `credentials: "
 
 | Status | Meaning |
 | --- | --- |
-| `201` | `{ "user": { "id", "name", "email" } }`. No `loom_session` cookie. |
+| `201` | `{ "user": { "id", "name", "email" } }` and `Set-Cookie: loom_session`. |
 | `403` | Registration is disabled. This is the default. The screen shows `Sign-up is invite-only for now` and a link back to sign in. |
 | `409` | That email already has an account. Code `conflict`. |
 | `422` | Validation failed. Code `validation_error`, with field details. |
@@ -68,9 +73,9 @@ The session is the HttpOnly `loom_session` cookie. `fetch` sends `credentials: "
 
 `GET /v1/auth/google/start` is a browser navigation, not a `fetch`. The live API responds with `302` to Google. `GET /v1/auth/google/callback` receives `code`, `state`, and an optional `error`. On success it sets `loom_session` and redirects the browser back into the app. The page never reads those query values.
 
-The mock accepts only `alex.sample@example.com` / `sample-password`. It does not set a cookie. It keeps the signed-in name and email in `sessionStorage` under `loom.mock.session` so a refresh stays on the sample session. That value is not a token and not a password. Other mock routes return `401` until that preview session exists. With `VITE_API_BASE_URL` unset, Continue with Google navigates to `/v1/auth/google/start` on this origin, and the preview signs in the sample user. A configured API origin receives that navigation itself.
+The mock accepts `alex.sample@example.com` / `sample-password`, and any account created while invite-only is off. It cannot set an HttpOnly cookie. It keeps the signed-in name and email in `sessionStorage` under `loom.mock.session`, including after a register `201`, so a refresh stays signed in. That value is not a token and not a password. Other mock routes return `401` until that preview session exists. With the mock on, Continue with Google navigates to `/v1/auth/google/start` on this origin, and the preview signs in the sample user. A live build sends that navigation to `{VITE_API_BASE}/v1/auth/google/start`, which is the same origin when the base is empty.
 
-Preview switches on the auth screens write `sessionStorage` key `loom.mock.flags`. `registerOpen` defaults to false, so create account returns `403`. Turning Invite-only off sets `registerOpen` to true and allows `201`. Rate limit defaults to off. Turning it on makes `POST /v1/auth/session` and `POST /v1/auth/register` return `429`. Rate limit is checked before the invite-only response.
+Preview switches on the auth screens write `sessionStorage` key `loom.mock.flags`. `registerOpen` defaults to false, so create account returns `403`. Turning Invite-only off sets `registerOpen` to true. A `201` then writes the preview session. Rate limit defaults to off. Turning it on makes `POST /v1/auth/session` and `POST /v1/auth/register` return `429`. Rate limit is checked before the invite-only response.
 
 ## Lists and errors
 

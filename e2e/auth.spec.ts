@@ -187,13 +187,16 @@ test("creates an account when invite-only is turned off", async ({ page }) => {
   await page.getByLabel("Password", { exact: true }).fill(samplePassword);
   await page.getByLabel("Confirm password").fill(samplePassword);
   await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await expect(page.getByText("Account created.")).toBeVisible();
-  await expect(page).toHaveURL(/\/sign-up$/);
-  await page.getByRole("link", { name: "Sign in" }).click();
-  await page.getByLabel("Email").fill("casey.sample@example.com");
-  await page.getByLabel("Password", { exact: true }).fill(samplePassword);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Welcome back, Casey" })).toBeVisible();
+  await expect(page).toHaveURL(/\/t\/daykodee$/);
+  await expect(page.getByText("Account created.")).toHaveCount(0);
+  const stored = await page.evaluate(() => ({
+    local: window.localStorage.length,
+    session: window.sessionStorage.getItem("loom.mock.session"),
+  }));
+  expect(stored.local).toBe(0);
+  expect(stored.session).toContain("casey.sample@example.com");
+  expect(stored.session).not.toContain(samplePassword);
 });
 
 test("sends unauthenticated visitors to sign in", async ({ page }) => {

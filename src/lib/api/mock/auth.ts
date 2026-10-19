@@ -175,6 +175,8 @@ function handleRegister(request: AuthRequest): Response {
     ]);
   }
   accounts.set(email, { name, password });
+  // sessionStorage stands in for the HttpOnly loom_session cookie a live 201 sets.
+  writeIdentity({ email, name });
   return Response.json(
     { user: { id: userId(email), name, email } },
     { status: 201 },

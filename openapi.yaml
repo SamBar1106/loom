@@ -12,8 +12,10 @@ info:
     with `credentials: "include"` and does not store tokens in localStorage.
     Google sign-in is a browser navigation to `{origin}/v1/auth/google/start`.
 
-    Leave `VITE_API_BASE_URL` unset to use the in-memory mock that implements this
-    contract. Set it to an origin such as `http://127.0.0.1:8000` to call a live API.
+    `VITE_USE_MOCK=true` uses the in-memory mock that implements this contract.
+    `VITE_API_BASE` is the live origin and defaults to empty, which is the same
+    origin as the app. `VITE_API_BASE_URL` is the previous name of `VITE_API_BASE`
+    and is used only when `VITE_API_BASE` is unset.
 servers:
   - url: http://127.0.0.1:8000
     description: Local API origin. Not deployed by this repository.
@@ -101,7 +103,8 @@ paths:
       description: |
         Confirm password is checked in the browser and is not part of this body.
         Registration is disabled by default and returns 403 until the server allows it.
-        A successful response does not start a session.
+        A successful response sets the HttpOnly `loom_session` cookie. The body is
+        the new user, not a Session. The client then calls GET /v1/auth/session.
       requestBody:
         required: true
         content:
@@ -110,7 +113,12 @@ paths:
               $ref: "#/components/schemas/RegisterRequest"
       responses:
         "201":
-          description: Account created. Body is the new user. No session cookie.
+          description: Account created and `loom_session` set. Body is the new user.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly `loom_session` cookie. The mock stores the preview session instead of setting a cookie.
           content:
             application/json:
               schema:
@@ -804,7 +812,7 @@ components:
       type: apiKey
       in: cookie
       name: loom_session
-      description: HttpOnly session cookie issued by POST /v1/auth/session or GET /v1/auth/google/callback. POST /v1/auth/register does not issue it.
+      description: HttpOnly session cookie issued by POST /v1/auth/session, POST /v1/auth/register, or GET /v1/auth/google/callback.
   parameters:
     TenantHeader:
       name: X-Tenant-Id

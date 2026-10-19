@@ -2,12 +2,25 @@ import type { ApiErrorBody, ApiErrorDetail } from "@/lib/api/types";
 import { mockDispatch } from "@/lib/api/mock/dispatch";
 
 /**
- * Live requests go to VITE_API_BASE_URL.
- * When that variable is unset, the same paths are handled by the in-memory mock.
+ * VITE_API_BASE is the API origin. Empty means the same origin as this app.
+ * VITE_API_BASE_URL is the previous name and applies only when VITE_API_BASE is unset.
+ * The in-memory mock runs only when VITE_USE_MOCK is "true" or "1".
  */
-const configuredBase = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
-export const apiBaseUrl = configuredBase.replace(/\/$/, "");
-export const useMockApi = apiBaseUrl.length === 0;
+function readApiBase(): string {
+  const configured = import.meta.env.VITE_API_BASE;
+  if (typeof configured === "string") return configured.trim().replace(/\/$/, "");
+  const legacy = import.meta.env.VITE_API_BASE_URL;
+  if (typeof legacy === "string") return legacy.trim().replace(/\/$/, "");
+  return "";
+}
+
+function readMockFlag(): boolean {
+  const value = import.meta.env.VITE_USE_MOCK?.trim().toLowerCase();
+  return value === "true" || value === "1";
+}
+
+export const apiBaseUrl = readApiBase();
+export const useMockApi = readMockFlag();
 
 export class ApiError extends Error {
   readonly status: number;
