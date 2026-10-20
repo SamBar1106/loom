@@ -14,7 +14,7 @@ The FastAPI backend is not part of this repository. Pointing the frontend at it 
 
 `VITE_API_BASE` defaults to empty. `VITE_API_BASE_URL` is the previous name and is used only when `VITE_API_BASE` is unset. Setting it does not enable the mock.
 
-`.env.development` and `.env.production` set `VITE_USE_MOCK=true`, so `npm run dev` and `npm run build` stay on the mock. A same-origin build is `VITE_USE_MOCK=false npm run build`. A value already set in the shell overrides those files.
+`.env.development` sets `VITE_USE_MOCK=true`, so `npm run dev` stays on the mock. `.env.production` sets `VITE_USE_MOCK=false`, so `npm run build` calls the live API. Playwright builds with `VITE_USE_MOCK=true` before serving the preview. A value already set in the shell overrides those files.
 
 Paths are rooted at `/v1`. Example: `GET {base}/v1/products`. An empty base is a relative URL.
 
@@ -26,7 +26,7 @@ UI routes look like `/t/daykodee/products`. The slug is not sent as the tenant i
 X-Tenant-Id: ten_daykodee
 ```
 
-That header is required for catalog, inventory, orders, inbox, dashboard, store settings, and payment settings. These routes do not use it:
+That header is required for catalog, inventory, orders, inbox, dashboard, store settings, payment settings, and Stripe Connect. These routes do not use it:
 
 - `GET`, `POST`, and `DELETE /v1/auth/session`
 - `POST /v1/auth/register`
@@ -122,11 +122,28 @@ Money fields are decimal strings with two fraction digits, such as `"32.00"`.
 | Inbox | `GET /v1/inbox`, `PATCH /v1/inbox/{threadId}` with `{ "unread": false }` |
 | Store settings | `GET` and `PATCH /v1/store-settings` |
 | Payments | `GET` and `PATCH /v1/payments-settings` |
+| Stripe | `GET /v1/stripe/account`, `POST /v1/stripe/accounts`, `POST /v1/stripe/onboarding-links` |
 
 Inventory status is derived. Available units are `onHand - reserved`. `0` is `out_of_stock`, `1` through `10` is `low_stock`, and anything higher is `in_stock`. Product list status uses the sum across that product's variants.
 
 A product's `price` is the lowest variant price. Creating a product requires `title` and `price` and creates one default variant. Deleting the last variant returns `409 conflict`.
 
 Payment settings expose toggles, a statement descriptor, and an optional masked payout label. They do not accept secret keys, account numbers, or provider tokens.
+
+## Stripe Connect
+
+Accept payments uses the loom-api Stripe Connect routes (Accounts v2). The browser shows `chargesEnabled`, `payoutsEnabled`, and `detailsSubmitted`, then opens a Stripe-hosted onboarding URL. It never sends or stores a secret key.
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| `GET` | `/v1/stripe/account` | Status for the tenant in `X-Tenant-Id`. `id` is null when Stripe is not connected. |
+| `POST` | `/v1/stripe/accounts` | Creates the connected account. Idempotent: an existing account is returned unchanged. No request fields. |
+| `POST` | `/v1/stripe/onboarding-links` | Returns `{ "url" }`. Optional `returnUrl` and `refreshUrl` are the pages Stripe should send the browser back to. |
+
+`X-Tenant-Id` is the internal tenant id, such as `ten_daykodee`. A `404` with code `not_found` on `GET /v1/stripe/account` means there is no account yet. `tenant_not_found` means the tenant id is unknown. `POST /v1/stripe/onboarding-links` returns `409` when the tenant has no account.
+
+The onboarding `url` is `http` or `https` and has no user or password. The page navigates the browser to it. Responses do not include secret keys, refresh tokens, or client secrets.
+
+In the mock, Daykodee has no account, so the button is Connect with Stripe. Harbor Sample already has `acct_sample_ten_harbor` with details submitted and charges still off, so the button is Continue onboarding. The sample onboarding URL is on `connect.stripe.com` and is not a live account link.
 
 Orders are part of the contract and the sample tenants return an empty page, which the Orders screen renders as an empty state.

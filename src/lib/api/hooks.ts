@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api/client";
+import { loadStripeAccount, startStripeOnboarding } from "@/lib/stripe-connect";
 import type {
   Category,
   CategoryWrite,
@@ -266,6 +267,24 @@ export function useUpdatePaymentsSettings(tenantId: string) {
       apiRequest<PaymentsSettings>("/v1/payments-settings", { method: "PATCH", tenantId, body }),
     onSuccess: (settings) => {
       queryClient.setQueryData(["payments-settings", tenantId], settings);
+    },
+  });
+}
+
+export function useStripeAccount(tenantId: string) {
+  return useQuery({
+    queryKey: ["stripe-account", tenantId],
+    queryFn: () => loadStripeAccount(tenantId, apiRequest),
+  });
+}
+
+export function useStartStripeOnboarding(tenantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { accountId: string | null; returnUrl: string; refreshUrl: string }) =>
+      startStripeOnboarding({ tenantId, ...input, request: apiRequest }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["stripe-account", tenantId] });
     },
   });
 }

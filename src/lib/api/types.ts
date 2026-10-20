@@ -99,6 +99,23 @@ export type PaymentsSettings = {
   payoutAccountLabel: string | null;
 };
 
+/** Connected-account status from loom-api Stripe Connect (Accounts v2). No secret keys. */
+export type StripeAccount = {
+  id: string | null;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+};
+
+export type StripeOnboardingLinkRequest = {
+  returnUrl?: string;
+  refreshUrl?: string;
+};
+
+export type StripeOnboardingLink = {
+  url: string;
+};
+
 export type Category = {
   id: string;
   name: string;

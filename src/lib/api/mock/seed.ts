@@ -7,6 +7,7 @@ import type {
   Metric,
   PaymentsSettings,
   Product,
+  StripeAccount,
   ProductOption,
   ProductType,
   ProductVariant,
@@ -19,6 +20,9 @@ export type TenantBucket = {
   tenant: Tenant;
   settings: StoreSettings;
   payments: PaymentsSettings;
+  stripe: StripeAccount;
+  /** How many times this tenant has created a Stripe account in the mock. */
+  stripeCreates: number;
   categories: Category[];
   products: Product[];
   threads: InboxThread[];
@@ -598,6 +602,13 @@ export function createSeed(): TenantBucket[] {
       statementDescriptor: "DAYKODEE SAMPLE",
       payoutAccountLabel: "Sample payout account ••19",
     },
+    stripe: {
+      id: null,
+      chargesEnabled: false,
+      payoutsEnabled: false,
+      detailsSubmitted: false,
+    },
+    stripeCreates: 0,
     categories: categories([
       { id: "cat_apparel", name: "Apparel" },
       { id: "cat_accessories", name: "Accessories" },
@@ -702,6 +713,13 @@ export function createSeed(): TenantBucket[] {
       statementDescriptor: "HARBOR SAMPLE",
       payoutAccountLabel: null,
     },
+    stripe: {
+      id: "acct_sample_ten_harbor",
+      chargesEnabled: false,
+      payoutsEnabled: false,
+      detailsSubmitted: true,
+    },
+    stripeCreates: 0,
     categories: categories([
       { id: "cat_outdoor", name: "Outdoor" },
       { id: "cat_decor", name: "Decor" },
