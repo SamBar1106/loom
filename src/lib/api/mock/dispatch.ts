@@ -1,6 +1,7 @@
 import { inventoryStatus } from "@/lib/inventory";
 import { slugify } from "@/lib/format";
 import { hoursBeforeSampleNow } from "@/lib/sample-clock";
+import { isHttpUrl } from "@/lib/stripe-connect";
 import type {
   ApiErrorDetail,
   Category,
@@ -821,7 +822,90 @@ const routes: Route[] = [
       return ok(bucket.payments);
     },
   },
+  {
+    method: "GET",
+    pattern: /^\/v1\/stripe\/account$/,
+    tenant: true,
+    handle: (bucket) => {
+      if (!bucket) return error(404, "tenant_not_found", "No tenant matches that id.");
+      return ok({ ...bucket.stripe });
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/v1\/stripe\/accounts$/,
+    tenant: true,
+    handle: (bucket, _match, request) => {
+      if (!bucket) return error(404, "tenant_not_found", "No tenant matches that id.");
+      if (request.body !== undefined && request.body !== null) {
+        if (!isRecord(request.body) || Object.keys(request.body).length > 0) {
+          return invalid([{ field: "body", message: "Creating a Stripe account does not take fields." }]);
+        }
+      }
+      if (bucket.stripe.id) return ok({ ...bucket.stripe });
+      bucket.stripeCreates += 1;
+      bucket.stripe = {
+        id: `acct_sample_${bucket.tenant.id}`,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        detailsSubmitted: false,
+      };
+      return ok({ ...bucket.stripe }, 201);
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/v1\/stripe\/onboarding-links$/,
+    tenant: true,
+    handle: (bucket, _match, request) => {
+      if (!bucket) return error(404, "tenant_not_found", "No tenant matches that id.");
+      if (!bucket.stripe.id) {
+        return error(409, "conflict", "Connect a Stripe account before opening onboarding.");
+      }
+      const linkBody = readOnboardingBody(request.body);
+      if (linkBody instanceof Response) return linkBody;
+      return ok({
+        url: sampleOnboardingUrl(bucket.stripe.id, bucket.stripeCreates, linkBody.returnUrl),
+      });
+    },
+  },
 ];
+
+function readOnboardingBody(body: unknown): { returnUrl?: string; refreshUrl?: string } | Response {
+  if (body === undefined || body === null) return {};
+  if (!isRecord(body)) return invalid([{ field: "body", message: "Expected an object." }]);
+  const details: ApiErrorDetail[] = [];
+  const unexpected = Object.keys(body).filter((key) => key !== "returnUrl" && key !== "refreshUrl");
+  if (unexpected.length > 0) {
+    details.push({ field: unexpected[0], message: "Only returnUrl and refreshUrl are accepted." });
+  }
+  let returnUrl: string | undefined;
+  let refreshUrl: string | undefined;
+  if (body.returnUrl !== undefined) {
+    if (typeof body.returnUrl !== "string" || !isHttpUrl(body.returnUrl)) {
+      details.push({ field: "returnUrl", message: "Enter an http(s) URL." });
+    } else {
+      returnUrl = body.returnUrl;
+    }
+  }
+  if (body.refreshUrl !== undefined) {
+    if (typeof body.refreshUrl !== "string" || !isHttpUrl(body.refreshUrl)) {
+      details.push({ field: "refreshUrl", message: "Enter an http(s) URL." });
+    } else {
+      refreshUrl = body.refreshUrl;
+    }
+  }
+  if (details.length > 0) return invalid(details);
+  return { returnUrl, refreshUrl };
+}
+
+/** Sample link only. The live API returns Stripe's URL; the query records what the mock did. */
+function sampleOnboardingUrl(accountId: string, creates: number, returnUrl: string | undefined): string {
+  const url = new URL(`https://connect.stripe.com/setup/s/${accountId}`);
+  url.searchParams.set("creates", String(creates));
+  if (returnUrl) url.searchParams.set("return", returnUrl);
+  return url.toString();
+}
 
 export async function mockDispatch(request: MockRequest): Promise<Response> {
   const path = request.path.split("?")[0] ?? request.path;

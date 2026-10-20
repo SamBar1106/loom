@@ -806,6 +806,95 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PaymentsSettings"
+  /v1/stripe/account:
+    get:
+      tags: [Payments]
+      operationId: getStripeAccount
+      summary: Connected account status for this tenant.
+      description: |
+        Loom API Stripe Connect (Accounts v2). Returns chargesEnabled, payoutsEnabled,
+        and detailsSubmitted. `id` is null when this tenant has not connected Stripe.
+        A 404 with code `not_found` means the same thing. `tenant_not_found` means the
+        tenant id is unknown. The body never includes secret keys, refresh tokens, or
+        client secrets.
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      responses:
+        "200":
+          description: Connected account status. No secret keys.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeAccount"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/stripe/accounts:
+    post:
+      tags: [Payments]
+      operationId: createStripeAccount
+      summary: Create this tenant's connected account.
+      description: |
+        Idempotent. An existing account is returned unchanged with 200. A new account
+        is 201, with charges and payouts still disabled until onboarding finishes.
+        The request has no fields and must not include secret keys.
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      responses:
+        "200":
+          description: This tenant already has a connected account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeAccount"
+        "201":
+          description: Connected account created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeAccount"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/stripe/onboarding-links:
+    post:
+      tags: [Payments]
+      operationId: createStripeOnboardingLink
+      summary: Stripe-hosted onboarding link for this tenant.
+      description: |
+        Requires X-Tenant-Id with the internal tenant id. Creates a single-use
+        onboarding URL and returns it as `url`. The browser navigates there.
+        returnUrl and refreshUrl are the pages Stripe should send the browser back to.
+        They are not secrets. 409 when this tenant has no connected account yet.
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StripeOnboardingLinkRequest"
+      responses:
+        "200":
+          description: Onboarding link. The URL contains no secret key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeOnboardingLink"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
 components:
   securitySchemes:
     sessionCookie:
@@ -1106,6 +1195,40 @@ components:
         statementDescriptor:
           type: string
           maxLength: 22
+    StripeAccount:
+      type: object
+      required: [id, chargesEnabled, payoutsEnabled, detailsSubmitted]
+      description: Connected account status. Never includes a secret key.
+      properties:
+        id:
+          type: ["string", "null"]
+          description: Connected account id, or null when Stripe is not connected. Not a secret.
+          examples: ["acct_sample_ten_harbor", null]
+        chargesEnabled:
+          type: boolean
+        payoutsEnabled:
+          type: boolean
+        detailsSubmitted:
+          type: boolean
+    StripeOnboardingLinkRequest:
+      type: object
+      additionalProperties: false
+      description: Pages Stripe should send the browser back to. Not secrets.
+      properties:
+        returnUrl:
+          type: string
+          format: uri
+        refreshUrl:
+          type: string
+          format: uri
+    StripeOnboardingLink:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: http(s) onboarding URL with no embedded user or password.
     Category:
       type: object
       required: [id, name, slug, productCount]

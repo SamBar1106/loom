@@ -1,6 +1,6 @@
 # Loom
 
-Loom is a multi-tenant store admin. This repository is the frontend: a React dashboard for products, inventory, orders, and store settings. The API is described in [`openapi.yaml`](openapi.yaml). The default dev server and production build answer it with an in-memory mock. A build with `VITE_USE_MOCK=false` calls a live API on the same origin, or on `VITE_API_BASE`.
+Loom is a multi-tenant store admin. This repository is the frontend: a React dashboard for products, inventory, orders, and store settings. The API is described in [`openapi.yaml`](openapi.yaml). The dev server answers it with an in-memory mock. A production build calls a live API on the same origin, or on `VITE_API_BASE`.
 
 The sample workspace is **Daykodee** (`/t/daykodee`). A second workspace, **Harbor Sample**, is included so tenant switching and data isolation can be checked. Catalog copy, addresses, and emails are placeholders such as Sample Tote Bag and `hello@example.com`.
 
@@ -33,16 +33,16 @@ The client calls `/v1` with `credentials: "include"` and sends `X-Tenant-Id` on 
 
 ### Mock
 
-`npm run dev` and `npm run build` load `VITE_USE_MOCK=true` from [`.env.development`](.env.development) and [`.env.production`](.env.production). Those builds answer `/v1` inside the browser. Playwright's preview uses that production build, so it stays on the mock. GitHub Pages settings are left as they are; a rebuild of this app stays on the mock because the production env file sets the flag.
+`npm run dev` loads `VITE_USE_MOCK=true` from [`.env.development`](.env.development) and answers `/v1` inside the browser. [`.env.production`](.env.production) sets `VITE_USE_MOCK=false`, so `npm run build` calls the live API. Playwright builds with `VITE_USE_MOCK=true` and then serves that preview, so the screenshot run stays on the mock.
 
 A shell value overrides the env files. Restart Vite after changing it.
 
 ### Same origin as the API
 
-Build without the mock and leave the base empty so `fetch` uses relative `/v1/...` URLs. Serve `dist` from the FastAPI process so the browser and the API share an origin:
+`npm run build` leaves the mock off and leaves the base empty, so `fetch` uses relative `/v1/...` URLs. Serve `dist` from the FastAPI process so the browser and the API share an origin:
 
 ```bash
-VITE_USE_MOCK=false npm run build
+npm run build
 ```
 
 ### Another origin
