@@ -47,8 +47,6 @@ export function TenantLayout() {
     };
   }, [tenant]);
 
-  if (!tenantSlug) return <Navigate to="/t/daykodee" replace />;
-
   if (session.isLoading || tenantsQuery.isLoading) {
     return (
       <div className="mx-auto flex min-h-svh max-w-5xl flex-col gap-6 p-6">
@@ -69,13 +67,19 @@ export function TenantLayout() {
     );
   }
 
+  const tenants = tenantsQuery.data?.data ?? [];
+
+  if (!tenant && tenants.length > 0) {
+    return <Navigate to={`/t/${tenants[0].slug}`} replace />;
+  }
+
   if (!tenant) {
     return (
       <div className="mx-auto flex min-h-svh max-w-lg items-center p-6">
         <Empty>
           <EmptyHeader>
-            <EmptyTitle>Tenant not found</EmptyTitle>
-            <EmptyDescription>That workspace is not in the sample tenant list.</EmptyDescription>
+            <EmptyTitle>No store yet</EmptyTitle>
+            <EmptyDescription>Your account is not linked to a store yet. Ask the store owner for an invite, or sign up to create one.</EmptyDescription>
           </EmptyHeader>
         </Empty>
       </div>
@@ -84,7 +88,7 @@ export function TenantLayout() {
 
   const state: TenantState = {
     tenant,
-    tenants: tenantsQuery.data?.data ?? [],
+    tenants,
     user: session.data.user,
   };
 
