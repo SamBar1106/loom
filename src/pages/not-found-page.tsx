@@ -1,16 +1,17 @@
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 
 export function NotFoundPage() {
+  const { tenantSlug } = useParams();
   return (
     <Empty className="min-h-80">
       <EmptyHeader>
         <EmptyTitle>Page not found</EmptyTitle>
-        <EmptyDescription>That Loom admin page is not part of this sample.</EmptyDescription>
+        <EmptyDescription>That Loom admin page does not exist.</EmptyDescription>
       </EmptyHeader>
-      <Button render={<Link to="/t/daykodee" />} nativeButton={false}>
-        Back to Daykodee
+      <Button render={<Link to={tenantSlug ? `/t/${tenantSlug}` : "/"} />} nativeButton={false}>
+        Back to dashboard
       </Button>
     </Empty>
   );

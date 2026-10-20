@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import { RequireAuth } from "@/app/require-auth";
 import { TenantLayout } from "@/app/tenant-context";
 import { CategoriesPage } from "@/pages/categories-page";
@@ -24,7 +24,7 @@ export function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/v1/auth/google/start" element={<GoogleStartPage />} />
       <Route element={<RequireAuth />}>
-        <Route path="/" element={<Navigate to="/t/daykodee" replace />} />
+        <Route path="/" element={<TenantLayout />} />
         <Route path="/t/:tenantSlug" element={<TenantLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="orders" element={<OrdersPage />} />
