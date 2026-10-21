@@ -65,7 +65,7 @@ export function AppSidebar() {
             </p>
           </div>
         </div>
-        <Progress value={(setup.completed / setup.total) * 100} aria-label="Sample setup progress" />
+        <Progress value={(setup.completed / setup.total) * 100} aria-label="Setup progress" />
         <DropdownMenu>
           <DropdownMenuTrigger
             render={<Button className="w-full justify-between" />}
@@ -197,10 +197,6 @@ export function AppSidebar() {
             </SidebarMenuSub>
           </SidebarMenuItem>
         </SidebarMenu>
-        <div className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm">
-          <span className="size-2 rounded-full bg-positive" aria-hidden="true" />
-          <span className="text-muted-foreground">Sample catalog</span>
-        </div>
       </SidebarFooter>
     </Sidebar>
   );

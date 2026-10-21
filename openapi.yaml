@@ -5,6 +5,7 @@ info:
   summary: Multi-tenant admin API for the Loom store dashboard.
   description: |
     Contract for the Loom admin frontend, aligned with loom-api.
+    Public buyer routes under `/v1/public` do not use a session or `X-Tenant-Id`.
     Every tenant-owned route requires the `X-Tenant-Id` header. The UI resolves
     a tenant slug from `/t/{tenantSlug}` and sends that tenant's id on each call.
 
@@ -29,6 +30,7 @@ tags:
   - name: Inventory
   - name: Categories
   - name: Orders
+  - name: Public
   - name: Inbox
   - name: Settings
   - name: Payments
@@ -754,6 +756,91 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
         "404":
+          $ref: "#/components/responses/Error"
+  /v1/public/stores/{storeSlug}/products:
+    get:
+      tags: [Public]
+      operationId: listPublicProducts
+      summary: Active products for a public store.
+      description: |
+        Public. No session cookie and no X-Tenant-Id. Lists products with
+        showInOnlineStore set. The store name is the store settings name.
+        Cost, tenant ids, and other admin fields are omitted.
+      security: []
+      parameters:
+        - name: storeSlug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Store and its public products.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicCatalog"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/public/stores/{storeSlug}/products/{productId}:
+    get:
+      tags: [Public]
+      operationId: getPublicProduct
+      summary: One active product on a public store.
+      description: |
+        Public. A product that is hidden from the online store, or that belongs
+        to another store, is 404 not_found.
+      security: []
+      parameters:
+        - name: storeSlug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Store and product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicProductDetail"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/public/checkout:
+    post:
+      tags: [Public]
+      operationId: startPublicCheckout
+      summary: Start checkout for one product.
+      description: |
+        Public. No session cookie and no X-Tenant-Id. The body is storeSlug,
+        productId, and quantity. The response is `{ "url" }`. The browser
+        navigates to that http(s) URL. The live API returns the Stripe Checkout
+        URL. The mock returns a checkout.stripe.com URL and records quantity
+        on the query string so tests can see it.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicCheckoutRequest"
+      responses:
+        "200":
+          description: Hosted checkout URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicCheckoutResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
           $ref: "#/components/responses/Error"
   /v1/inbox:
     get:
@@ -1742,6 +1829,77 @@ components:
           $ref: "#/components/schemas/OrderStatus"
         order:
           $ref: "#/components/schemas/Order"
+    PublicStore:
+      type: object
+      required: [slug, name]
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+    PublicProduct:
+      type: object
+      required: [id, title, description, price, currency, imageUrl, imageAlt, available]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        price:
+          type: string
+          description: Decimal string with two fraction digits.
+        currency:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        imageAlt:
+          type: ["string", "null"]
+        available:
+          type: integer
+          minimum: 0
+    PublicCatalog:
+      type: object
+      required: [store, data]
+      properties:
+        store:
+          $ref: "#/components/schemas/PublicStore"
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicProduct"
+    PublicProductDetail:
+      type: object
+      required: [store, product]
+      properties:
+        store:
+          $ref: "#/components/schemas/PublicStore"
+        product:
+          $ref: "#/components/schemas/PublicProduct"
+    PublicCheckoutRequest:
+      type: object
+      additionalProperties: false
+      required: [storeSlug, productId, quantity]
+      properties:
+        storeSlug:
+          type: string
+          minLength: 1
+        productId:
+          type: string
+          minLength: 1
+        quantity:
+          type: integer
+          minimum: 1
+    PublicCheckoutResult:
+      type: object
+      additionalProperties: false
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: http or https URL with no user or password.
     OrderPage:
       type: object
       required: [data, page]

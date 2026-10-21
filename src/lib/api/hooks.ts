@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api/client";
+import { publicProductPath, publicProductsPath, startPublicCheckout } from "@/lib/api/public-store";
 import { loadStripeAccount, startStripeOnboarding } from "@/lib/stripe-connect";
 import type {
   Category,
@@ -12,6 +13,9 @@ import type {
   InventoryPatch,
   CheckoutSession,
   Order,
+  PublicCatalog,
+  PublicCheckoutRequest,
+  PublicProductDetail,
   Page,
   PaymentsSettings,
   Product,
@@ -218,6 +222,28 @@ export function useOrder(tenantId: string, orderId: string) {
     queryKey: ["order", tenantId, orderId],
     queryFn: () => apiRequest<Order>(`/v1/orders/${encodeURIComponent(orderId)}`, { tenantId }),
     enabled: orderId.length > 0,
+  });
+}
+
+export function usePublicCatalog(storeSlug: string) {
+  return useQuery({
+    queryKey: ["public-catalog", storeSlug],
+    queryFn: () => apiRequest<PublicCatalog>(publicProductsPath(storeSlug)),
+    enabled: storeSlug.length > 0,
+  });
+}
+
+export function usePublicProduct(storeSlug: string, productId: string | undefined) {
+  return useQuery({
+    queryKey: ["public-product", storeSlug, productId],
+    queryFn: () => apiRequest<PublicProductDetail>(publicProductPath(storeSlug, productId ?? "")),
+    enabled: Boolean(storeSlug && productId),
+  });
+}
+
+export function usePublicCheckout() {
+  return useMutation({
+    mutationFn: (body: PublicCheckoutRequest) => startPublicCheckout(body),
   });
 }
 

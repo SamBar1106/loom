@@ -40,7 +40,6 @@ import { ApiError, apiRequest } from "@/lib/api/client";
 import { useCategories, useDeleteProduct, useProduct } from "@/lib/api/hooks";
 import type { Product, ProductPatch, ProductType } from "@/lib/api/types";
 import { formatMoney } from "@/lib/format";
-import { placeholderImage } from "@/lib/placeholder-image";
 import { tenantPath } from "@/lib/paths";
 import { usePageTitle } from "@/pages/use-page-title";
 
@@ -383,7 +382,7 @@ function ProductEditor({
                     value={draft.description}
                     onChange={(event) => update("description", event.target.value)}
                   />
-                  <FieldDescription>Sample placeholder copy. Formatting is stored as plain text.</FieldDescription>
+                  <FieldDescription>Formatting is stored as plain text.</FieldDescription>
                 </Field>
               </FieldGroup>
             </CardContent>
@@ -498,7 +497,7 @@ function ProductEditor({
           <Card>
             <CardHeader>
               <CardTitle>Media</CardTitle>
-              <CardDescription>Original placeholders only. Files stay in this browser session.</CardDescription>
+              <CardDescription>Files stay in this browser session.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -539,7 +538,7 @@ function ProductEditor({
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   aria-label="Image URL"
-                  placeholder="https://example.com/sample.png"
+                  placeholder="https://example.com/image.png"
                   value={draft.mediaUrl}
                   onChange={(event) => update("mediaUrl", event.target.value)}
                 />
@@ -548,23 +547,11 @@ function ProductEditor({
                   variant="outline"
                   onClick={() => {
                     if (!draft.mediaUrl.trim()) return;
-                    update("media", [...draft.media, { url: draft.mediaUrl.trim(), alt: draft.title || "Sample image" }]);
+                    update("media", [...draft.media, { url: draft.mediaUrl.trim(), alt: draft.title || "Product image" }]);
                     update("mediaUrl", "");
                   }}
                 >
                   Add from URL
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() =>
-                    update("media", [
-                      ...draft.media,
-                      { url: placeholderImage("Sample", 40 + draft.media.length * 25), alt: "Sample image" },
-                    ])
-                  }
-                >
-                  Add sample image
                 </Button>
               </div>
             </CardContent>
@@ -730,7 +717,7 @@ function ProductEditor({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete this product?</DialogTitle>
-            <DialogDescription>The sample product is removed from this tenant only.</DialogDescription>
+            <DialogDescription>This product is removed from this store.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDelete(false)}>

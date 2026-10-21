@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { Navigate, Outlet, useParams } from "react-router-dom";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageSkeleton, QueryError } from "@/components/query-state";
@@ -23,7 +23,7 @@ export function useTenant(): TenantState {
   return value;
 }
 
-export function TenantLayout() {
+export function TenantLayout({ children }: { children?: ReactNode }) {
   const { tenantSlug } = useParams();
   const session = useSession();
   const tenantsQuery = useTenants();
@@ -94,9 +94,7 @@ export function TenantLayout() {
 
   return (
     <TenantContext.Provider value={state}>
-      <AppShell>
-        <Outlet />
-      </AppShell>
+      <AppShell>{children ?? <Outlet />}</AppShell>
     </TenantContext.Provider>
   );
 }

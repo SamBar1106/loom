@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useTenant } from "@/app/tenant-context";
 import { PageSkeleton, QueryError } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import {
   Dialog,
   DialogContent,
@@ -40,7 +41,6 @@ export function CategoriesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">Categories</h1>
-          <p className="text-muted-foreground">Groups used by this tenant’s sample catalog.</p>
         </div>
         <Button
           onClick={() => {
@@ -54,7 +54,14 @@ export function CategoriesPage() {
       </div>
       {categories.isLoading ? <PageSkeleton /> : null}
       {categories.error ? <QueryError error={categories.error} /> : null}
-      {categories.data ? (
+      {categories.data && categories.data.data.length === 0 ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>No categories</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : null}
+      {categories.data && categories.data.data.length > 0 ? (
         <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
           <Table>
             <TableHeader>
