@@ -33,6 +33,8 @@ The client calls `/v1` with `credentials: "include"` and sends `X-Tenant-Id` on 
 
 Buyer checkout results are public pages: `/t/<storeSlug>/checkout/success?session_id=` shows the order from `GET /v1/checkout/sessions/{sessionId}`, and `/t/<storeSlug>/checkout/cancel` does not call the API. A production build serves those routes through the SPA fallback.
 
+Signed-out buyers open `/t/<storeSlug>` for the product list and `/t/<storeSlug>/p/<productId>` for one product. Buy posts `{ storeSlug, productId, quantity }` to `POST /v1/public/checkout` and navigates to the returned `url`. That call lives in `src/lib/api/public-store.ts`. Signed-in admins still land on the dashboard at `/t/<storeSlug>`.
+
 ### Mock
 
 `npm run dev` loads `VITE_USE_MOCK=true` from [`.env.development`](.env.development) and answers `/v1` inside the browser. [`.env.production`](.env.production) sets `VITE_USE_MOCK=false`, so `npm run build` calls the live API. Playwright builds with `VITE_USE_MOCK=true` and then serves that preview, so the screenshot run stays on the mock.

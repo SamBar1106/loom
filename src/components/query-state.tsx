@@ -8,7 +8,7 @@ export function QueryError({ error }: { error: unknown }) {
       ? error.message
       : error instanceof Error
         ? error.message
-        : "The sample API did not respond.";
+        : "The request failed.";
   return (
     <Alert variant="destructive">
       <AlertTitle>Could not load this page</AlertTitle>

@@ -299,6 +299,44 @@ export type CheckoutSession = {
   order: Order;
 };
 
+/** Public store name for /t/{storeSlug}. No admin fields. */
+export type PublicStore = {
+  slug: string;
+  name: string;
+};
+
+/** Product a buyer can see. Cost and tenant ids are omitted. */
+export type PublicProduct = {
+  id: string;
+  title: string;
+  description: string;
+  price: string;
+  currency: string;
+  imageUrl: string | null;
+  imageAlt: string | null;
+  available: number;
+};
+
+export type PublicCatalog = {
+  store: PublicStore;
+  data: PublicProduct[];
+};
+
+export type PublicProductDetail = {
+  store: PublicStore;
+  product: PublicProduct;
+};
+
+export type PublicCheckoutRequest = {
+  storeSlug: string;
+  productId: string;
+  quantity: number;
+};
+
+export type PublicCheckoutResult = {
+  url: string;
+};
+
 export type InboxThread = {
   id: string;
   subject: string;

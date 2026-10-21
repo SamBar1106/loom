@@ -20,6 +20,7 @@ src/lib/api/mock/seed.ts     Fictional catalogs for two tenants
 src/lib/preview-flags.ts     Preview switches for invite-only and rate limit
 src/lib/api/mock/auth.ts     Session, register, and Google mock routes
 src/lib/api/mock/dispatch.ts Path router that implements the contract
+src/lib/api/public-store.ts  Public catalog paths and POST /v1/public/checkout
 src/lib/stripe-connect.ts    Stripe account status and onboarding handoff
 src/components/ui/           shadcn/ui components
 src/components/auth/         Sign-in card, password field, Google button
@@ -38,7 +39,8 @@ src/pages/                   Sign-in, create account, home, products, edit,
 | `/forgot-password` | Placeholder. Reset is not available |
 | `/v1/auth/google/start` | Preview handoff when no API origin is set |
 | `/` | Redirects to `/t/daykodee` after sign-in |
-| `/t/:tenantSlug` | Home overview |
+| `/t/:tenantSlug` | Public product list when signed out. Home overview when signed in |
+| `/t/:tenantSlug/p/:productId` | Public product page. Buy calls `POST /v1/public/checkout` |
 | `/t/:tenantSlug/orders` | Orders for the signed-in tenant |
 | `/t/:tenantSlug/orders/:orderId` | Order detail from `GET /v1/orders/{orderId}` |
 | `/t/:tenantSlug/checkout/success` | Public buyer receipt. `session_id` loads the order summary |
@@ -66,7 +68,7 @@ The header switcher keeps the current section when the destination tenant can sh
 
 `apiRequest` builds the query string and the `X-Tenant-Id` header. When `VITE_USE_MOCK` is `true` or `1`, `mockDispatch` returns a `Response`. Otherwise the same request is sent with `fetch` and `credentials: "include"` to `VITE_API_BASE`. An empty base is the same origin. `VITE_API_BASE_URL` is the previous name and applies only when `VITE_API_BASE` is unset. `.env.production` sets the mock flag off. Pages never import the mock database. Continue with Google assigns `window.location` to `{base}/v1/auth/google/start`. Accept payments reads `GET /v1/stripe/account` and navigates to the URL from `POST /v1/stripe/onboarding-links`.
 
-Signed-out visits to `/` and `/t/:tenantSlug` redirect to `/sign-in`. Checkout result pages are outside that guard so a buyer can open `/t/:tenantSlug/checkout/success` and `/t/:tenantSlug/checkout/cancel` without an admin session. Dev and preview use SPA fallback and serve `index.html` for those paths, including a full reload of a production build. The header menu signs out with `DELETE /v1/auth/session`.
+Signed-out visits to `/` redirect to `/sign-in`. Signed-out visits to `/t/:tenantSlug` show the public store. Admin sections under that slug still redirect to `/sign-in`. Checkout result pages and `/t/:tenantSlug/p/:productId` are outside the admin guard. A buyer can open them without an admin session. Dev and preview use SPA fallback and serve `index.html` for those paths, including a full reload of a production build. The header menu signs out with `DELETE /v1/auth/session`.
 
 ## Sample data
 

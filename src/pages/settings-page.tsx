@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useTenant } from "@/app/tenant-context";
 import { PageSkeleton, QueryError } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -95,11 +96,18 @@ export function SettingsPage() {
     <div className="flex max-w-3xl flex-col gap-4" data-page="settings">
       <div>
         <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">Store settings</h1>
-        <p className="text-muted-foreground">Public contact details for {tenant.name}. This is sample data.</p>
+        <p className="text-muted-foreground">Contact details</p>
       </div>
       {settings.isLoading ? <PageSkeleton /> : null}
       {settings.error ? <QueryError error={settings.error} /> : null}
       {settings.data ? <SettingsForm key={tenant.id} initial={settings.data} /> : null}
+      {!settings.isLoading && !settings.error && !settings.data ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>No store settings</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : null}
     </div>
   );
 }

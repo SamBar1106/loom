@@ -201,8 +201,8 @@ test("creates an account when invite-only is turned off", async ({ page }) => {
 
 test("sends unauthenticated visitors to sign in", async ({ page }) => {
   await page.goto("/t/daykodee");
-  await expect(page).toHaveURL(/\/sign-in$/);
-  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await expect(page).toHaveURL(/\/t\/daykodee$/);
+  await expect(page.locator("[data-page=storefront]")).toBeVisible();
 
   await page.goto("/t/daykodee/products");
   await expect(page).toHaveURL(/\/sign-in$/);

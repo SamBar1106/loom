@@ -109,8 +109,11 @@ export function TopBar() {
             <BellIcon />
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80">
-            <PopoverTitle>Sample notifications</PopoverTitle>
+            <PopoverTitle>Notifications</PopoverTitle>
             <div className="mt-3 flex flex-col gap-3">
+              {(dashboard.data?.activity ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No notifications</p>
+              ) : null}
               {(dashboard.data?.activity ?? []).slice(0, 3).map((item) => (
                 <div key={item.id} className="flex flex-col gap-0.5">
                   <p className="text-sm">{item.title}</p>

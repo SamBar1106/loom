@@ -14,6 +14,7 @@ import { Sparkline } from "@/components/sparkline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDashboard } from "@/lib/api/hooks";
 import type { ActivityKind, DashboardRange } from "@/lib/api/types";
@@ -79,7 +80,6 @@ export function DashboardPage() {
           <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
             Welcome back, {firstName}
           </h1>
-          <p className="text-muted-foreground">Here is what is happening in this sample store today.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Tabs
@@ -114,10 +114,7 @@ export function DashboardPage() {
         <>
           <Card>
             <CardHeader>
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="text-lg">{dashboard.data.store.name}</CardTitle>
-                <Badge variant="secondary">Sample</Badge>
-              </div>
+              <CardTitle className="text-lg">{dashboard.data.store.name}</CardTitle>
               <CardDescription>{dashboard.data.store.addressLine}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -141,49 +138,61 @@ export function DashboardPage() {
           </Card>
 
           <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-heading text-lg font-medium">Analytics overview</h2>
-              <p className="text-sm text-muted-foreground">Sample figures</p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {dashboard.data.metrics.map((metric) => (
-                <Card key={metric.key}>
-                  <CardHeader>
-                    <CardDescription>{metric.label}</CardDescription>
-                    <CardTitle className="text-2xl font-semibold">{metric.value}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex items-end justify-between gap-3">
-                    <span className={metric.deltaPercent >= 0 ? "text-sm text-positive" : "text-sm text-destructive"}>
-                      {formatPercent(metric.deltaPercent)}
-                    </span>
-                    <Sparkline values={metric.series} />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <h2 className="font-heading text-lg font-medium">Analytics overview</h2>
+            {dashboard.data.metrics.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>No metrics</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {dashboard.data.metrics.map((metric) => (
+                  <Card key={metric.key}>
+                    <CardHeader>
+                      <CardDescription>{metric.label}</CardDescription>
+                      <CardTitle className="text-2xl font-semibold">{metric.value}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex items-end justify-between gap-3">
+                      <span className={metric.deltaPercent >= 0 ? "text-sm text-positive" : "text-sm text-destructive"}>
+                        {formatPercent(metric.deltaPercent)}
+                      </span>
+                      <Sparkline values={metric.series} />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </section>
 
           <Card>
             <CardHeader>
               <CardTitle>Recent activity</CardTitle>
-              <CardDescription>Sample events for {tenant.name}.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-1">
-              {dashboard.data.activity.map((item) => (
-                <div key={item.id} className="flex min-h-14 items-start gap-3 rounded-lg px-1 py-2">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
-                    <ActivityIcon kind={item.kind} />
+              {dashboard.data.activity.length === 0 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyTitle>No activity</EmptyTitle>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                dashboard.data.activity.map((item) => (
+                  <div key={item.id} className="flex min-h-14 items-start gap-3 rounded-lg px-1 py-2">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
+                      <ActivityIcon kind={item.kind} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{item.title}</p>
+                      <p className="text-sm text-muted-foreground">{item.detail}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <Badge variant="outline">{activityLabel(item.kind)}</Badge>
+                      <span className="text-xs text-muted-foreground">{formatRelative(item.occurredAt)}</span>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{item.title}</p>
-                    <p className="text-sm text-muted-foreground">{item.detail}</p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <Badge variant="outline">{activityLabel(item.kind)}</Badge>
-                    <span className="text-xs text-muted-foreground">{formatRelative(item.occurredAt)}</span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
         </>

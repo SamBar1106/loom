@@ -6,16 +6,23 @@ import { mockDispatch } from "@/lib/api/mock/dispatch";
  * VITE_API_BASE_URL is the previous name and applies only when VITE_API_BASE is unset.
  * The in-memory mock runs only when VITE_USE_MOCK is "true" or "1".
  */
+function envValue(name: string): string | undefined {
+  const env = import.meta.env;
+  if (!env || typeof env !== "object") return undefined;
+  const value = (env as Record<string, unknown>)[name];
+  return typeof value === "string" ? value : undefined;
+}
+
 function readApiBase(): string {
-  const configured = import.meta.env.VITE_API_BASE;
-  if (typeof configured === "string") return configured.trim().replace(/\/$/, "");
-  const legacy = import.meta.env.VITE_API_BASE_URL;
-  if (typeof legacy === "string") return legacy.trim().replace(/\/$/, "");
+  const configured = envValue("VITE_API_BASE");
+  if (configured !== undefined) return configured.trim().replace(/\/$/, "");
+  const legacy = envValue("VITE_API_BASE_URL");
+  if (legacy !== undefined) return legacy.trim().replace(/\/$/, "");
   return "";
 }
 
 function readMockFlag(): boolean {
-  const value = import.meta.env.VITE_USE_MOCK?.trim().toLowerCase();
+  const value = envValue("VITE_USE_MOCK")?.trim().toLowerCase();
   return value === "true" || value === "1";
 }
 

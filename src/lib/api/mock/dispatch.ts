@@ -18,6 +18,8 @@ import type {
   ProductPatch,
   ProductVariant,
   ProductWrite,
+  PublicProduct,
+  PublicStore,
   VariantPatch,
   VariantWrite,
 } from "@/lib/api/types";
@@ -338,6 +340,64 @@ type Route = {
   public?: boolean;
   handle: (bucket: TenantBucket | null, match: RegExpMatchArray, request: MockRequest) => Response;
 };
+
+function findStore(slug: string): TenantBucket | undefined {
+  return [...buckets.values()].find((bucket) => bucket.tenant.slug === slug);
+}
+
+function decodeSegment(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function publicStore(bucket: TenantBucket): PublicStore {
+  return { slug: bucket.tenant.slug, name: bucket.settings.storeName };
+}
+
+function toPublicProduct(product: Product): PublicProduct {
+  const media = product.media[0];
+  return {
+    id: product.id,
+    title: product.title,
+    description: product.description,
+    price: product.price,
+    currency: product.currency,
+    imageUrl: media?.url ?? null,
+    imageAlt: media?.alt ?? null,
+    available: productAvailable(product),
+  };
+}
+
+function onlineProducts(bucket: TenantBucket): Product[] {
+  return bucket.products.filter((product) => product.showInOnlineStore);
+}
+
+function publicCheckout(request: MockRequest): Response {
+  if (!isRecord(request.body)) return invalid([{ field: "body", message: "Expected an object." }]);
+  const storeSlug = typeof request.body.storeSlug === "string" ? request.body.storeSlug.trim() : "";
+  const productId = typeof request.body.productId === "string" ? request.body.productId.trim() : "";
+  const quantity = request.body.quantity;
+  const details: ApiErrorDetail[] = [];
+  if (!storeSlug) details.push({ field: "storeSlug", message: "Store slug is required." });
+  if (!productId) details.push({ field: "productId", message: "Product id is required." });
+  if (typeof quantity !== "number" || !Number.isInteger(quantity) || quantity < 1) {
+    details.push({ field: "quantity", message: "Quantity must be an integer of 1 or more." });
+  }
+  if (details.length > 0) return invalid(details);
+  const bucket = findStore(storeSlug);
+  if (!bucket) return error(404, "not_found", "Store was not found.");
+  const product = onlineProducts(bucket).find((item) => item.id === productId);
+  if (!product) return error(404, "not_found", "Product was not found.");
+  if (productAvailable(product) < (quantity as number)) {
+    return error(409, "conflict", "Not enough stock.");
+  }
+  const url = new URL(`https://checkout.stripe.com/c/pay/cs_test_${product.id}`);
+  url.searchParams.set("quantity", String(quantity));
+  return ok({ url: url.toString() });
+}
 
 function publicOrder(order: StoredOrder): Order {
   return {
@@ -778,6 +838,40 @@ const routes: Route[] = [
         order: publicOrder(order),
       });
     },
+  },
+  {
+    method: "GET",
+    pattern: /^\/v1\/public\/stores\/([^/]+)\/products$/,
+    tenant: false,
+    public: true,
+    handle: (_bucket, match) => {
+      const bucket = findStore(decodeSegment(match[1] ?? ""));
+      if (!bucket) return error(404, "not_found", "Store was not found.");
+      return ok({
+        store: publicStore(bucket),
+        data: onlineProducts(bucket).map(toPublicProduct),
+      });
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/v1\/public\/stores\/([^/]+)\/products\/([^/]+)$/,
+    tenant: false,
+    public: true,
+    handle: (_bucket, match) => {
+      const bucket = findStore(decodeSegment(match[1] ?? ""));
+      if (!bucket) return error(404, "not_found", "Store was not found.");
+      const product = onlineProducts(bucket).find((item) => item.id === decodeSegment(match[2] ?? ""));
+      if (!product) return error(404, "not_found", "Product was not found.");
+      return ok({ store: publicStore(bucket), product: toPublicProduct(product) });
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/v1\/public\/checkout$/,
+    tenant: false,
+    public: true,
+    handle: (_bucket, _match, request) => publicCheckout(request),
   },
   {
     method: "GET",

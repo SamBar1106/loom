@@ -35,6 +35,9 @@ That header is required for catalog, inventory, orders, inbox, dashboard, store 
 - `GET /v1/tenants`
 - `GET /v1/tenants/{tenantId}`
 - `GET /v1/checkout/sessions/{sessionId}` (buyer receipt; `storeSlug` query, no cookie)
+- `GET /v1/public/stores/{storeSlug}/products`
+- `GET /v1/public/stores/{storeSlug}/products/{productId}`
+- `POST /v1/public/checkout`
 
 A missing header returns `400` with code `tenant_required`. An unknown id returns `404` with code `tenant_not_found`. A resource that exists for a different tenant returns `404` with code `not_found`, so one tenant cannot read another tenant's rows.
 
@@ -151,3 +154,11 @@ In the mock, Daykodee has no account, so the button is Connect with Stripe. Harb
 Orders require `X-Tenant-Id` with the internal tenant id. Status is `pending`, `paid`, or `failed`. Each order includes `items` (catalog `productId`, title, quantity, unit price), `amount`, `fee`, `buyerEmail`, and `createdAt`. The sample tenants return a few fictional orders so the Orders screen and the buyer receipt can be checked. One tenant cannot read another tenant's order.
 
 `GET /v1/checkout/sessions/{sessionId}?storeSlug=` is public. The buyer page `/t/{storeSlug}/checkout/success?session_id=` calls it and shows the order summary. No session cookie and no `X-Tenant-Id`. A session that belongs to a different store is `404` `not_found`. The body has no card data and no secret keys. `/t/{storeSlug}/checkout/cancel` is a static page and does not call the API.
+
+## Public store
+
+Signed-out buyers open `/t/{storeSlug}` for the product list and `/t/{storeSlug}/p/{productId}` for one product. Signed-in admins still see the dashboard at `/t/{storeSlug}`.
+
+`GET /v1/public/stores/{storeSlug}/products` returns `{ "store": { "slug", "name" }, "data": [] }`. A product is included when `showInOnlineStore` is true. `GET /v1/public/stores/{storeSlug}/products/{productId}` returns `{ "store", "product" }`. Hidden products and unknown stores are `404` `not_found`. Fields are id, title, description, price, currency, imageUrl, imageAlt, and available. Cost and tenant ids are omitted.
+
+`POST /v1/public/checkout` is the only checkout call. The helper is `startPublicCheckout` in `src/lib/api/public-store.ts`, and the path constant is `publicCheckoutPath` (`/v1/public/checkout`). The body is `{ "storeSlug", "productId", "quantity" }`. `quantity` is an integer of 1 or more. The response is `{ "url" }`. The page navigates to that URL when it is `http` or `https` and has no user or password. Unknown stores and products are `404`. A quantity above available stock is `409` `conflict`. The mock URL is on `checkout.stripe.com` and includes `quantity` as a query parameter so tests can read it. The live API returns the Stripe Checkout URL.
