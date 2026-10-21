@@ -25,8 +25,8 @@ src/components/ui/           shadcn/ui components
 src/components/auth/         Sign-in card, password field, Google button
 src/components/layout/       Sidebar, header, shell
 src/pages/                   Sign-in, create account, home, products, edit,
-                             inventory, categories, orders, inbox, settings,
-                             payments
+                             inventory, categories, orders, order detail,
+                             checkout result, inbox, settings, payments
 ```
 
 ## Routes
@@ -39,7 +39,10 @@ src/pages/                   Sign-in, create account, home, products, edit,
 | `/v1/auth/google/start` | Preview handoff when no API origin is set |
 | `/` | Redirects to `/t/daykodee` after sign-in |
 | `/t/:tenantSlug` | Home overview |
-| `/t/:tenantSlug/orders` | Orders, empty in the sample data |
+| `/t/:tenantSlug/orders` | Orders for the signed-in tenant |
+| `/t/:tenantSlug/orders/:orderId` | Order detail from `GET /v1/orders/{orderId}` |
+| `/t/:tenantSlug/checkout/success` | Public buyer receipt. `session_id` loads the order summary |
+| `/t/:tenantSlug/checkout/cancel` | Public page shown when checkout is canceled |
 | `/t/:tenantSlug/products` | Searchable product table |
 | `/t/:tenantSlug/products/new` | Create product |
 | `/t/:tenantSlug/products/:productId` | Edit product |
@@ -63,7 +66,7 @@ The header switcher keeps the current section when the destination tenant can sh
 
 `apiRequest` builds the query string and the `X-Tenant-Id` header. When `VITE_USE_MOCK` is `true` or `1`, `mockDispatch` returns a `Response`. Otherwise the same request is sent with `fetch` and `credentials: "include"` to `VITE_API_BASE`. An empty base is the same origin. `VITE_API_BASE_URL` is the previous name and applies only when `VITE_API_BASE` is unset. `.env.production` sets the mock flag off. Pages never import the mock database. Continue with Google assigns `window.location` to `{base}/v1/auth/google/start`. Accept payments reads `GET /v1/stripe/account` and navigates to the URL from `POST /v1/stripe/onboarding-links`.
 
-Signed-out visits to `/` and `/t/:tenantSlug` redirect to `/sign-in`. The header menu signs out with `DELETE /v1/auth/session`.
+Signed-out visits to `/` and `/t/:tenantSlug` redirect to `/sign-in`. Checkout result pages are outside that guard so a buyer can open `/t/:tenantSlug/checkout/success` and `/t/:tenantSlug/checkout/cancel` without an admin session. Dev and preview use SPA fallback and serve `index.html` for those paths, including a full reload of a production build. The header menu signs out with `DELETE /v1/auth/session`.
 
 ## Sample data
 

@@ -31,6 +31,8 @@ Images are written to `docs/screenshots/`. Chrome on the machine is used, so a s
 
 The client calls `/v1` with `credentials: "include"` and sends `X-Tenant-Id` on tenant-owned routes. It does not store tokens in `localStorage`. Continue with Google navigates the browser to `{base}/v1/auth/google/start`. An empty base is this app's origin.
 
+Buyer checkout results are public pages: `/t/<storeSlug>/checkout/success?session_id=` shows the order from `GET /v1/checkout/sessions/{sessionId}`, and `/t/<storeSlug>/checkout/cancel` does not call the API. A production build serves those routes through the SPA fallback.
+
 ### Mock
 
 `npm run dev` loads `VITE_USE_MOCK=true` from [`.env.development`](.env.development) and answers `/v1` inside the browser. [`.env.production`](.env.production) sets `VITE_USE_MOCK=false`, so `npm run build` calls the live API. Playwright builds with `VITE_USE_MOCK=true` and then serves that preview, so the screenshot run stays on the mock.

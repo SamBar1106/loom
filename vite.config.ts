@@ -4,6 +4,9 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  // Client routes such as /t/:storeSlug/checkout/success must load on a full
+  // document request. Dev and preview serve index.html for those paths.
+  appType: "spa",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

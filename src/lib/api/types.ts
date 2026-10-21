@@ -5,7 +5,7 @@
 
 export type ProductType = "physical" | "digital" | "service";
 export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";
-export type OrderStatus = "open" | "paid" | "fulfilled" | "cancelled" | "refunded";
+export type OrderStatus = "pending" | "paid" | "failed";
 export type DashboardRange = "today" | "7d" | "30d";
 export type ActivityKind = "order" | "inventory" | "payment" | "review" | "automation";
 export type StoreStatus = "sample" | "live";
@@ -272,7 +272,8 @@ export type InventoryPatch = {
   onHand: number;
 };
 
-export type OrderLine = {
+export type OrderItem = {
+  productId: string;
   title: string;
   quantity: number;
   unitPrice: string;
@@ -280,13 +281,22 @@ export type OrderLine = {
 
 export type Order = {
   id: string;
-  number: string;
-  customerName: string;
-  total: string;
-  currency: string;
   status: OrderStatus;
+  buyerEmail: string;
+  amount: string;
+  fee: string;
+  currency: string;
   createdAt: string;
-  lineItems: OrderLine[];
+  items: OrderItem[];
+};
+
+/** Buyer receipt for a checkout session. No card data or secret keys. */
+export type CheckoutSession = {
+  id: string;
+  storeSlug: string;
+  storeName: string;
+  status: OrderStatus;
+  order: Order;
 };
 
 export type InboxThread = {

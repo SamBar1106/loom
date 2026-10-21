@@ -9,6 +9,19 @@ export function formatMoney(amount: string, currency = "USD"): string {
   }).format(value);
 }
 
+export function formatDateTime(iso: string): string {
+  const value = Date.parse(iso);
+  if (Number.isNaN(value)) return iso;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(value);
+}
+
 export function formatRelative(iso: string, now = SAMPLE_NOW): string {
   const delta = Math.max(0, now - Date.parse(iso));
   const minutes = Math.round(delta / 60_000);

@@ -69,11 +69,14 @@ test("filters products, edits a draft, and isolates tenants", async ({ page }) =
   expect(overflows).toBe(false);
 
   await page.getByRole("link", { name: "Orders", exact: true }).click();
-  await expect(page.getByText("No orders yet")).toBeVisible();
+  await expect(page.getByText("buyer.sample@example.com")).toBeVisible();
+  await expect(page.getByText("harbor.buyer@example.com")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Daykodee" }).click();
   await page.getByRole("menuitem", { name: "Harbor Sample" }).click();
   await expect(page).toHaveURL(/\/t\/harbor-sample\/orders/);
+  await expect(page.getByText("harbor.buyer@example.com")).toBeVisible();
+  await expect(page.getByText("buyer.sample@example.com")).toHaveCount(0);
   await page.getByRole("link", { name: "Products", exact: true }).click();
   await expect(page.getByRole("link", { name: /Sample Harbor Lantern/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Sample Tote Bag/ })).toHaveCount(0);

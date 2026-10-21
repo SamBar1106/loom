@@ -1,7 +1,8 @@
+import { Link } from "react-router-dom";
 import { ShoppingBagIcon } from "lucide-react";
 import { useTenant } from "@/app/tenant-context";
+import { OrderStatusBadge } from "@/components/order-summary";
 import { PageSkeleton, QueryError } from "@/components/query-state";
-import { Badge } from "@/components/ui/badge";
 import {
   Empty,
   EmptyDescription,
@@ -18,7 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useOrders } from "@/lib/api/hooks";
-import { formatMoney, formatRelative } from "@/lib/format";
+import { formatDateTime, formatMoney } from "@/lib/format";
+import { tenantPath } from "@/lib/paths";
 import { usePageTitle } from "@/pages/use-page-title";
 
 export function OrdersPage() {
@@ -38,9 +40,7 @@ export function OrdersPage() {
               <ShoppingBagIcon />
             </EmptyMedia>
             <EmptyTitle>No orders yet</EmptyTitle>
-            <EmptyDescription>
-              This tenant has no sample orders. When an order arrives it will be listed here.
-            </EmptyDescription>
+            <EmptyDescription>Orders from checkout will be listed here.</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : null}
@@ -50,22 +50,31 @@ export function OrdersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Order</TableHead>
-                <TableHead>Customer</TableHead>
+                <TableHead>Buyer</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Placed</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Fee</TableHead>
+                <TableHead>Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {orders.data.data.map((order) => (
                 <TableRow key={order.id}>
-                  <TableCell>{order.number}</TableCell>
-                  <TableCell>{order.customerName}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{order.status}</Badge>
+                    <Link
+                      to={tenantPath(tenant.slug, `orders/${order.id}`)}
+                      className="flex min-h-11 items-center font-medium"
+                    >
+                      {order.id}
+                    </Link>
                   </TableCell>
-                  <TableCell>{formatMoney(order.total, order.currency)}</TableCell>
-                  <TableCell>{formatRelative(order.createdAt)}</TableCell>
+                  <TableCell>{order.buyerEmail}</TableCell>
+                  <TableCell>
+                    <OrderStatusBadge status={order.status} />
+                  </TableCell>
+                  <TableCell>{formatMoney(order.amount, order.currency)}</TableCell>
+                  <TableCell>{formatMoney(order.fee, order.currency)}</TableCell>
+                  <TableCell>{formatDateTime(order.createdAt)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
