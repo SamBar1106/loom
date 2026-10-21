@@ -669,21 +669,37 @@ paths:
     get:
       tags: [Orders]
       operationId: listOrders
+      summary: Orders for the tenant in X-Tenant-Id.
+      description: |
+        Requires the internal tenant id in X-Tenant-Id, not the store slug.
+        Newest orders come first. Each row includes status (pending, paid, or
+        failed), items tied to catalog product ids, amount, fee, buyer email,
+        and createdAt.
       parameters:
         - $ref: "#/components/parameters/TenantHeader"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
-          description: Order page. The sample tenants currently return an empty page.
+          description: Order page.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrderPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /v1/orders/{orderId}:
     get:
       tags: [Orders]
       operationId: getOrder
+      summary: One order in this tenant.
+      description: |
+        Requires X-Tenant-Id with the internal tenant id. An order that belongs
+        to another tenant is 404 not_found.
       parameters:
         - $ref: "#/components/parameters/TenantHeader"
         - name: orderId
@@ -693,11 +709,50 @@ paths:
             type: string
       responses:
         "200":
-          description: Order.
+          description: Order, including items, amount, fee, buyer email, and date.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/checkout/sessions/{sessionId}:
+    get:
+      tags: [Orders]
+      operationId: getCheckoutSession
+      summary: Buyer receipt for a checkout session.
+      description: |
+        Public. No session cookie and no X-Tenant-Id. The buyer page
+        /t/{storeSlug}/checkout/success?session_id={sessionId} calls this route.
+        storeSlug must be the store that owns the session. A mismatch or an
+        unknown session is 404 not_found. Items reference catalog product ids.
+        The body never includes secret keys or card data.
+      security: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: storeSlug
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Store slug from /t/{storeSlug}, not the internal tenant id.
+      responses:
+        "200":
+          description: Checkout session and its order summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutSession"
+        "400":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
   /v1/inbox:
@@ -1120,7 +1175,8 @@ components:
       enum: [order, inventory, payment, review, automation]
     OrderStatus:
       type: string
-      enum: [open, paid, fulfilled, cancelled, refunded]
+      enum: [pending, paid, failed]
+      description: pending while checkout is unfinished, paid when payment is received, failed when payment does not complete.
     StoreSettings:
       type: object
       required: [storeName, contactEmail, supportPhone, addressLine, city, region, postalCode, timezone, currency, status]
@@ -1628,39 +1684,64 @@ components:
             $ref: "#/components/schemas/InventoryItem"
         page:
           $ref: "#/components/schemas/PageMeta"
-    OrderLine:
+    OrderItem:
       type: object
-      required: [title, quantity, unitPrice]
+      required: [productId, title, quantity, unitPrice]
+      description: A purchased catalog product. productId is the Loom product id used at checkout.
       properties:
+        productId:
+          type: string
         title:
           type: string
         quantity:
           type: integer
+          minimum: 1
         unitPrice:
           $ref: "#/components/schemas/Money"
     Order:
       type: object
-      required: [id, number, customerName, total, currency, status, createdAt, lineItems]
+      required: [id, status, buyerEmail, amount, fee, currency, createdAt, items]
       properties:
         id:
           type: string
-        number:
-          type: string
-        customerName:
-          type: string
-        total:
-          $ref: "#/components/schemas/Money"
-        currency:
-          type: string
         status:
           $ref: "#/components/schemas/OrderStatus"
+        buyerEmail:
+          type: string
+          format: email
+        amount:
+          $ref: "#/components/schemas/Money"
+          description: Merchandise amount charged for the items.
+        fee:
+          $ref: "#/components/schemas/Money"
+          description: Fee recorded for this order. Not a secret.
+        currency:
+          type: string
+          examples: ["USD"]
         createdAt:
           type: string
           format: date-time
-        lineItems:
+          description: When the order was placed.
+        items:
           type: array
           items:
-            $ref: "#/components/schemas/OrderLine"
+            $ref: "#/components/schemas/OrderItem"
+    CheckoutSession:
+      type: object
+      required: [id, storeSlug, storeName, status, order]
+      description: Buyer-facing checkout result. No card numbers or secret keys.
+      properties:
+        id:
+          type: string
+          description: Checkout session id from the success URL query session_id.
+        storeSlug:
+          type: string
+        storeName:
+          type: string
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        order:
+          $ref: "#/components/schemas/Order"
     OrderPage:
       type: object
       required: [data, page]

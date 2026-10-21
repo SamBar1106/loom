@@ -34,6 +34,7 @@ That header is required for catalog, inventory, orders, inbox, dashboard, store 
 - `GET /v1/auth/google/callback`
 - `GET /v1/tenants`
 - `GET /v1/tenants/{tenantId}`
+- `GET /v1/checkout/sessions/{sessionId}` (buyer receipt; `storeSlug` query, no cookie)
 
 A missing header returns `400` with code `tenant_required`. An unknown id returns `404` with code `tenant_not_found`. A resource that exists for a different tenant returns `404` with code `not_found`, so one tenant cannot read another tenant's rows.
 
@@ -119,6 +120,7 @@ Money fields are decimal strings with two fraction digits, such as `"32.00"`.
 | Inventory | `GET /v1/inventory`, `PATCH /v1/inventory/{variantId}` with `{ "onHand": 12 }` |
 | Categories | `GET` and `POST /v1/categories`, `PATCH` and `DELETE /v1/categories/{categoryId}` |
 | Orders | `GET /v1/orders`, `GET /v1/orders/{orderId}` |
+| Checkout | `GET /v1/checkout/sessions/{sessionId}?storeSlug=` |
 | Inbox | `GET /v1/inbox`, `PATCH /v1/inbox/{threadId}` with `{ "unread": false }` |
 | Store settings | `GET` and `PATCH /v1/store-settings` |
 | Payments | `GET` and `PATCH /v1/payments-settings` |
@@ -146,4 +148,6 @@ The onboarding `url` is `http` or `https` and has no user or password. The page 
 
 In the mock, Daykodee has no account, so the button is Connect with Stripe. Harbor Sample already has `acct_sample_ten_harbor` with details submitted and charges still off, so the button is Continue onboarding. The sample onboarding URL is on `connect.stripe.com` and is not a live account link.
 
-Orders are part of the contract and the sample tenants return an empty page, which the Orders screen renders as an empty state.
+Orders require `X-Tenant-Id` with the internal tenant id. Status is `pending`, `paid`, or `failed`. Each order includes `items` (catalog `productId`, title, quantity, unit price), `amount`, `fee`, `buyerEmail`, and `createdAt`. The sample tenants return a few fictional orders so the Orders screen and the buyer receipt can be checked. One tenant cannot read another tenant's order.
+
+`GET /v1/checkout/sessions/{sessionId}?storeSlug=` is public. The buyer page `/t/{storeSlug}/checkout/success?session_id=` calls it and shows the order summary. No session cookie and no `X-Tenant-Id`. A session that belongs to a different store is `404` `not_found`. The body has no card data and no secret keys. `/t/{storeSlug}/checkout/cancel` is a static page and does not call the API.

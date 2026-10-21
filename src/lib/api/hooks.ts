@@ -10,6 +10,7 @@ import type {
   InboxThread,
   InventoryItem,
   InventoryPatch,
+  CheckoutSession,
   Order,
   Page,
   PaymentsSettings,
@@ -209,6 +210,25 @@ export function useOrders(tenantId: string, page = 1) {
     queryKey: ["orders", tenantId, page],
     queryFn: () =>
       apiRequest<Page<Order>>("/v1/orders", { tenantId, query: { page, pageSize: 10 } }),
+  });
+}
+
+export function useOrder(tenantId: string, orderId: string) {
+  return useQuery({
+    queryKey: ["order", tenantId, orderId],
+    queryFn: () => apiRequest<Order>(`/v1/orders/${encodeURIComponent(orderId)}`, { tenantId }),
+    enabled: orderId.length > 0,
+  });
+}
+
+export function useCheckoutSession(storeSlug: string, sessionId: string | null) {
+  return useQuery({
+    queryKey: ["checkout-session", storeSlug, sessionId],
+    queryFn: () =>
+      apiRequest<CheckoutSession>(`/v1/checkout/sessions/${encodeURIComponent(sessionId ?? "")}`, {
+        query: { storeSlug },
+      }),
+    enabled: Boolean(storeSlug && sessionId),
   });
 }
 

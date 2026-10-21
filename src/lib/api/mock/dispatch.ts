@@ -9,6 +9,7 @@ import type {
   InventoryItem,
   InventoryStatus,
   OptionWrite,
+  Order,
   Page,
   Product,
   ProductListItem,
@@ -21,7 +22,7 @@ import type {
   VariantWrite,
 } from "@/lib/api/types";
 import { handleAuth, hasMockSession, resetAuthMock } from "@/lib/api/mock/auth";
-import { createSeed, type TenantBucket } from "@/lib/api/mock/seed";
+import { createSeed, type StoredOrder, type TenantBucket } from "@/lib/api/mock/seed";
 
 export type MockRequest = {
   method: string;
@@ -333,8 +334,23 @@ type Route = {
   method: string;
   pattern: RegExp;
   tenant: boolean;
+  /** Buyer checkout receipts do not require a session or X-Tenant-Id. */
+  public?: boolean;
   handle: (bucket: TenantBucket | null, match: RegExpMatchArray, request: MockRequest) => Response;
 };
+
+function publicOrder(order: StoredOrder): Order {
+  return {
+    id: order.id,
+    status: order.status,
+    buyerEmail: order.buyerEmail,
+    amount: order.amount,
+    fee: order.fee,
+    currency: order.currency,
+    createdAt: order.createdAt,
+    items: order.items.map((item) => ({ ...item })),
+  };
+}
 
 const routes: Route[] = [
   {
@@ -723,8 +739,10 @@ const routes: Route[] = [
     method: "GET",
     pattern: /^\/v1\/orders$/,
     tenant: true,
-    handle: (_bucket, _match, request) => {
-      const page = paginate([], request.query);
+    handle: (bucket, _match, request) => {
+      if (!bucket) return error(404, "tenant_not_found", "No tenant matches that id.");
+      const sorted = [...bucket.orders].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const page = paginate(sorted.map(publicOrder), request.query);
       if (page instanceof Response) return page;
       return ok(page);
     },
@@ -733,7 +751,33 @@ const routes: Route[] = [
     method: "GET",
     pattern: /^\/v1\/orders\/([^/]+)$/,
     tenant: true,
-    handle: () => error(404, "not_found", "Order was not found in this tenant."),
+    handle: (bucket, match) => {
+      if (!bucket) return error(404, "tenant_not_found", "No tenant matches that id.");
+      const order = bucket.orders.find((item) => item.id === match[1]);
+      if (!order) return error(404, "not_found", "Order was not found in this tenant.");
+      return ok(publicOrder(order));
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/v1\/checkout\/sessions\/([^/]+)$/,
+    tenant: false,
+    public: true,
+    handle: (_bucket, match, request) => {
+      const sessionId = match[1] ?? "";
+      const storeSlug = request.query.get("storeSlug") ?? "";
+      if (!storeSlug) return invalid([{ field: "storeSlug", message: "Store slug is required." }]);
+      const owner = [...buckets.values()].find((item) => item.tenant.slug === storeSlug);
+      const order = owner?.orders.find((item) => item.checkoutSessionId === sessionId);
+      if (!owner || !order) return error(404, "not_found", "Checkout session was not found.");
+      return ok({
+        id: sessionId,
+        storeSlug: owner.tenant.slug,
+        storeName: owner.settings.storeName,
+        status: order.status,
+        order: publicOrder(order),
+      });
+    },
   },
   {
     method: "GET",
@@ -907,23 +951,29 @@ function sampleOnboardingUrl(accountId: string, creates: number, returnUrl: stri
   return url.toString();
 }
 
+function findRoute(method: string, path: string): { route: Route; match: RegExpMatchArray } | null {
+  for (const route of routes) {
+    if (route.method !== method) continue;
+    const match = route.pattern.exec(path);
+    if (match) return { route, match };
+  }
+  return null;
+}
+
 export async function mockDispatch(request: MockRequest): Promise<Response> {
   const path = request.path.split("?")[0] ?? request.path;
   const auth = handleAuth({ ...request, path }, [...buckets.keys()]);
   if (auth) return auth;
+  const found = findRoute(request.method, path);
+  if (found?.route.public) return found.route.handle(null, found.match, request);
   if (!hasMockSession()) {
     return error(401, "unauthenticated", "Sign in to continue.");
   }
-  for (const route of routes) {
-    if (route.method !== request.method) continue;
-    const match = route.pattern.exec(path);
-    if (!match) continue;
-    if (!route.tenant) return route.handle(null, match, request);
-    const bucket = requireTenant(request.tenantId);
-    if (!isBucket(bucket)) return bucket;
-    return route.handle(bucket, match, request);
-  }
-  return error(404, "not_found", "That API path is not in the Loom contract.");
+  if (!found) return error(404, "not_found", "That API path is not in the Loom contract.");
+  if (!found.route.tenant) return found.route.handle(null, found.match, request);
+  const bucket = requireTenant(request.tenantId);
+  if (!isBucket(bucket)) return bucket;
+  return found.route.handle(bucket, found.match, request);
 }
 
 export function resetMockStore(): void {

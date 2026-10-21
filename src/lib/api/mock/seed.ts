@@ -14,7 +14,13 @@ import type {
   StoreSettings,
   Tenant,
   InboxThread,
+  Order,
 } from "@/lib/api/types";
+
+export type StoredOrder = Order & {
+  /** Mock-only link from a buyer checkout session. Not part of the order body. */
+  checkoutSessionId: string | null;
+};
 
 export type TenantBucket = {
   tenant: Tenant;
@@ -25,6 +31,7 @@ export type TenantBucket = {
   stripeCreates: number;
   categories: Category[];
   products: Product[];
+  orders: StoredOrder[];
   threads: InboxThread[];
   activity: ActivityItem[];
   metrics: Record<DashboardRange, Metric[]>;
@@ -618,6 +625,46 @@ export function createSeed(): TenantBucket[] {
       { id: "cat_stationery", name: "Stationery" },
     ]),
     products: daykodeeProducts(),
+    orders: [
+      {
+        id: "ord_1042",
+        status: "paid",
+        buyerEmail: "buyer.sample@example.com",
+        amount: "54.00",
+        fee: "2.16",
+        currency: "USD",
+        createdAt: hoursBeforeSampleNow(0.2),
+        checkoutSessionId: "cs_sample_paid",
+        items: [
+          { productId: "prd_sample_tote", title: "Sample Tote Bag", quantity: 1, unitPrice: "32.00" },
+          { productId: "prd_sample_notebook", title: "Sample Desk Notebook", quantity: 2, unitPrice: "11.00" },
+        ],
+      },
+      {
+        id: "ord_1043",
+        status: "pending",
+        buyerEmail: "pending.buyer@example.com",
+        amount: "14.00",
+        fee: "0.56",
+        currency: "USD",
+        createdAt: hoursBeforeSampleNow(5),
+        checkoutSessionId: "cs_sample_pending",
+        items: [{ productId: "prd_sample_mug", title: "Sample Ceramic Mug", quantity: 1, unitPrice: "14.00" }],
+      },
+      {
+        id: "ord_1044",
+        status: "failed",
+        buyerEmail: "failed.buyer@example.com",
+        amount: "22.00",
+        fee: "0.88",
+        currency: "USD",
+        createdAt: hoursBeforeSampleNow(20),
+        checkoutSessionId: "cs_sample_failed",
+        items: [
+          { productId: "prd_sample_candle", title: "Sample Candle Holders", quantity: 1, unitPrice: "22.00" },
+        ],
+      },
+    ],
     threads: [
       {
         id: "thr_fit",
@@ -726,6 +773,21 @@ export function createSeed(): TenantBucket[] {
       { id: "cat_travel", name: "Travel" },
     ]),
     products: harborProducts(),
+    orders: [
+      {
+        id: "ord_h14",
+        status: "paid",
+        buyerEmail: "harbor.buyer@example.com",
+        amount: "36.00",
+        fee: "1.44",
+        currency: "USD",
+        createdAt: hoursBeforeSampleNow(4),
+        checkoutSessionId: "cs_harbor_paid",
+        items: [
+          { productId: "prd_harbor_lantern", title: "Sample Harbor Lantern", quantity: 1, unitPrice: "36.00" },
+        ],
+      },
+    ],
     threads: [
       {
         id: "thr_harbor",
