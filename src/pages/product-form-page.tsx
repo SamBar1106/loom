@@ -36,10 +36,10 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { ApiError, apiRequest, apiUpload } from "@/lib/api/client";
+import { ApiError, apiRequest, apiUpload, resolveMediaUrl } from "@/lib/api/client";
 import { useCategories, useDeleteProduct, useProduct } from "@/lib/api/hooks";
 import { productImagePath } from "@/lib/api/product-image";
-import type { Product, ProductPatch, ProductType } from "@/lib/api/types";
+import type { Product, ProductMedia, ProductPatch, ProductType } from "@/lib/api/types";
 import { formatMoney } from "@/lib/format";
 import { tenantPath } from "@/lib/paths";
 import { usePageTitle } from "@/pages/use-page-title";
@@ -313,9 +313,7 @@ function ProductEditor({
     if (!productId) return;
     setUploading(true);
     try {
-      const product = await apiUpload<Product>(productImagePath(productId), { tenantId: tenant.id, file });
-      const added = product.media[product.media.length - 1];
-      if (!added) return;
+      const added = await apiUpload<ProductMedia>(productImagePath(productId), { tenantId: tenant.id, file });
       const item = { url: added.url, alt: added.alt };
       setDraft((current) => ({ ...current, media: [...current.media, item] }));
       setBaseline((current) => {
@@ -323,7 +321,7 @@ function ProductEditor({
         return snapshot({ ...parsed, media: [...parsed.media, item] });
       });
       queryClient.setQueryData<Product>(["product", tenant.id, productId], (current) =>
-        current ? { ...current, media: product.media, updatedAt: product.updatedAt } : product,
+        current ? { ...current, media: [...current.media, added] } : current,
       );
       await queryClient.invalidateQueries({ queryKey: ["products", tenant.id] });
       toast.success("Image uploaded.");
@@ -532,7 +530,7 @@ function ProductEditor({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {draft.media.map((item, index) => (
                   <div key={`${item.url}-${index}`} className="relative">
-                    <img src={item.url} alt={item.alt} className="aspect-4/3 w-full rounded-lg object-cover" />
+                    <img src={resolveMediaUrl(item.url)} alt={item.alt} className="aspect-4/3 w-full rounded-lg object-cover" />
                     <Button
                       type="button"
                       variant="secondary"

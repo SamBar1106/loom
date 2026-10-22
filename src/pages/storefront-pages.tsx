@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { ApiError } from "@/lib/api/client";
+import { ApiError, resolveMediaUrl } from "@/lib/api/client";
 import { usePublicCatalog, usePublicCheckout, usePublicProduct } from "@/lib/api/hooks";
 import type { PublicProduct, PublicStore } from "@/lib/api/types";
 import { formatMoney } from "@/lib/format";
@@ -86,7 +86,7 @@ function ProductCard({ storeSlug, product }: { storeSlug: string; product: Publi
       <CardHeader>
         {product.imageUrl ? (
           <img
-            src={product.imageUrl}
+            src={resolveMediaUrl(product.imageUrl)}
             alt={product.imageAlt ?? product.title}
             className="aspect-4/3 w-full rounded-lg object-cover"
           />
@@ -166,7 +166,7 @@ function ProductDetail({
     <div className="grid gap-6 md:grid-cols-2">
       {product.imageUrl ? (
         <img
-          src={product.imageUrl}
+          src={resolveMediaUrl(product.imageUrl)}
           alt={product.imageAlt ?? product.title}
           className="aspect-4/3 w-full rounded-xl object-cover"
         />

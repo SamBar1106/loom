@@ -1,9 +1,12 @@
 export const maxProductImageBytes = 5 * 1024 * 1024;
 
+/** Multipart part name on POST /v1/products/{productId}/images. */
+export const productImageField = "file";
+
 const imageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 export function productImagePath(productId: string): string {
-  return `/v1/products/${encodeURIComponent(productId)}/image`;
+  return `/v1/products/${encodeURIComponent(productId)}/images`;
 }
 
 /** Message for a rejected `file` part, or null when the file can be stored. */

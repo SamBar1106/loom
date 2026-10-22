@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, before, test } from "node:test";
 import { mockDispatch, resetMockStore } from "@/lib/api/mock/dispatch";
-import { productImagePath } from "@/lib/api/product-image";
+import { productImageField, productImagePath } from "@/lib/api/product-image";
 
 class MemoryStorage {
   #data = new Map<string, string>();
@@ -76,35 +76,38 @@ function pngFile(name = "shelf.png"): File {
 }
 
 test("product image path targets the multipart upload route", () => {
-  assert.equal(productImagePath("prd_sample_tote"), "/v1/products/prd_sample_tote/image");
-  assert.equal(productImagePath("a/b"), "/v1/products/a%2Fb/image");
+  assert.equal(productImageField, "file");
+  assert.equal(productImagePath("prd_sample_tote"), "/v1/products/prd_sample_tote/images");
+  assert.equal(productImagePath("a/b"), "/v1/products/a%2Fb/images");
 });
 
-test("uploading an image appends multipart field file onto the product", async () => {
+test("uploading an image stores a /media URL on the product", async () => {
   await signIn();
   const form = new FormData();
-  form.set("file", pngFile());
+  form.set(productImageField, pngFile());
   const uploaded = await read(
     await call("POST", productImagePath("prd_sample_tote"), form, "ten_daykodee"),
   );
-  assert.equal(uploaded.status, 200);
-  const media = uploaded.body.media as { url: string; alt: string; position: number }[];
-  assert.equal(media.length, 2);
-  const added = media[1];
-  assert.ok(added);
-  assert.equal(added.alt, "shelf.png");
-  assert.equal(added.position, 1);
-  assert.match(added.url, /^data:image\/png;base64,/);
+  assert.equal(uploaded.status, 201);
+  const created = uploaded.body as { id: string; url: string; alt: string; position: number };
+  assert.equal(typeof created.id, "string");
+  assert.equal(created.alt, "shelf.png");
+  assert.equal(created.position, 1);
+  assert.match(created.url, /^\/media\/[a-z0-9._-]+$/i);
 
   const loaded = await read(await call("GET", "/v1/products/prd_sample_tote", undefined, "ten_daykodee"));
-  const stored = loaded.body.media as { alt: string }[];
-  assert.equal(stored.some((item) => item.alt === "shelf.png"), true);
+  const stored = loaded.body.media as { url: string; alt: string }[];
+  assert.equal(stored.some((item) => item.url === created.url && item.alt === "shelf.png"), true);
 
-  const listed = await read(await call("GET", "/v1/products?page=1&pageSize=8", undefined, "ten_daykodee"));
-  const row = (listed.body.data as { id: string; thumbnailUrl: string | null }[]).find(
-    (item) => item.id === "prd_sample_tote",
-  );
-  assert.equal(typeof row?.thumbnailUrl, "string");
+  await call("DELETE", "/v1/auth/session");
+  const image = await call("GET", created.url);
+  assert.equal(image.status, 200);
+  assert.match(image.headers.get("content-type") ?? "", /^image\/png/);
+  const bytes = new Uint8Array(await image.arrayBuffer());
+  assert.ok(bytes.byteLength > 0);
+
+  const missing = await call("GET", "/media/missing.png");
+  assert.equal(missing.status, 404);
 });
 
 test("image upload rejects a missing, empty, or non-image file", async () => {
@@ -146,7 +149,7 @@ test("image upload requires a session, a tenant, and a real product", async () =
   assert.equal((noTenant.body.error as { code: string }).code, "tenant_required");
 
   const form = new FormData();
-  form.set("file", pngFile());
+  form.set(productImageField, pngFile());
   const missing = await read(await call("POST", productImagePath("prd_missing"), form, "ten_daykodee"));
   assert.equal(missing.status, 404);
 

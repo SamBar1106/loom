@@ -38,6 +38,7 @@ That header is required for catalog, inventory, orders, inbox, dashboard, store 
 - `GET /v1/public/stores/{storeSlug}/products`
 - `GET /v1/public/stores/{storeSlug}/products/{productId}`
 - `POST /v1/public/checkout`
+- `GET /media/{name}` (product image bytes; no cookie)
 
 A missing header returns `400` with code `tenant_required`. An unknown id returns `404` with code `tenant_not_found`. A resource that exists for a different tenant returns `404` with code `not_found`, so one tenant cannot read another tenant's rows.
 
@@ -117,7 +118,8 @@ Money fields are decimal strings with two fraction digits, such as `"32.00"`.
 | Auth | `GET`, `POST`, and `DELETE /v1/auth/session`, `POST /v1/auth/register`, `GET /v1/auth/google/start`, `GET /v1/auth/google/callback` |
 | Tenants | `GET /v1/tenants`, `GET /v1/tenants/{tenantId}` |
 | Dashboard | `GET /v1/dashboard?range=today\|7d\|30d` |
-| Products | `GET` and `POST /v1/products`, `GET`, `PATCH`, and `DELETE /v1/products/{productId}`, `POST /v1/products/{productId}/image` |
+| Products | `GET` and `POST /v1/products`, `GET`, `PATCH`, and `DELETE /v1/products/{productId}`, `POST /v1/products/{productId}/images` |
+| Media files | `GET /media/{name}` |
 | Variants | `GET` and `POST /v1/products/{productId}/variants`, `PATCH` and `DELETE .../variants/{variantId}` |
 | Options | `GET` and `POST /v1/products/{productId}/options`, `PATCH` and `DELETE .../options/{optionId}` |
 | Inventory | `GET /v1/inventory`, `PATCH /v1/inventory/{variantId}` with `{ "onHand": 12 }` |
@@ -133,7 +135,7 @@ Inventory status is derived. Available units are `onHand - reserved`. `0` is `ou
 
 A product's `price` is the lowest variant price. Creating a product requires `title` and `price` and creates one default variant. Deleting the last variant returns `409 conflict`.
 
-`POST /v1/products/{productId}/image` uploads one image. The body is `multipart/form-data` with a single field, `file`. The file must be `image/jpeg`, `image/png`, `image/webp`, or `image/gif`, and at most 5 MB. A missing file, an empty file, or another type returns `400` `validation_error` on field `file`. An unknown product returns `404` `not_found`. The response is the product, with the new media item appended (`id`, `url`, `alt`, `position`). `X-Tenant-Id` is required. The mock stores the bytes as a data URL so the editor can show the image in the same session.
+`POST /v1/products/{productId}/images` uploads one image. The body is `multipart/form-data` with a single field, `file`. The file must be `image/jpeg`, `image/png`, `image/webp`, or `image/gif`, and at most 5 MB. A missing file, an empty file, or another type returns `400` `validation_error` on field `file`. An unknown product returns `404` `not_found`. `X-Tenant-Id` is required. `201` returns the new media item (`id`, `url`, `alt`, `position`). `url` is `/media/{name}`. The same item is stored on the product. `GET /media/{name}` returns the image bytes with no session and no `X-Tenant-Id`. A missing name is `404` `not_found`. The mock keeps those bytes in memory and the editor resolves `/media/{name}` for display. A live build requests that path on the API origin.
 
 Payment settings expose toggles, a statement descriptor, and an optional masked payout label. They do not accept secret keys, account numbers, or provider tokens.
 

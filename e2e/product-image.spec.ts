@@ -27,7 +27,9 @@ test("product editor uploads an image to the product image route", async ({ page
     mimeType: "image/png",
     buffer: png,
   });
-  await expect(page.getByRole("img", { name: "shelf.png" })).toBeVisible();
+  const image = page.getByRole("img", { name: "shelf.png" });
+  await expect(image).toBeVisible();
+  await expect.poll(async () => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
   await expect(page.getByText("Image uploaded.")).toBeVisible();
   await expect(page.getByText("Unsaved changes")).toHaveCount(0);
 });
