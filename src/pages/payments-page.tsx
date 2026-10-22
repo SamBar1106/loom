@@ -50,7 +50,7 @@ function StripeConnection({ account }: { account: StripeAccount }) {
   const connect = useStartStripeOnboarding(tenant.id);
   const action = stripeConnectAction(account);
   const label = stripeConnectLabel(action);
-  const returnUrl = `${window.location.origin}${tenantPath(tenant.slug, "settings/payments")}`;
+  const returnUrl = `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}${tenantPath(tenant.slug, "settings/payments")}`;
 
   return (
     <Card>

@@ -22,7 +22,7 @@ if (!root) throw new Error("Root element missing.");
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "") || undefined}>
         <TooltipProvider>
           <App />
           <Toaster />
