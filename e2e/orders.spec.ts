@@ -20,7 +20,9 @@ test("checkout success and cancel load from the production preview", async ({ pa
   await expect(page.locator("[data-field=status]")).toContainText("Paid");
   await expect(page.locator("[data-field=buyer]")).toContainText("buyer.sample@example.com");
   await expect(page.locator("[data-field=amount]")).toContainText("$54.00");
-  await expect(page.locator("[data-field=fee]")).toContainText("$2.16");
+  await expect(page.locator("[data-field=fee]")).toHaveCount(0);
+  await expect(page.getByText("Fee", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("$2.16")).toHaveCount(0);
   await expect(page.locator("[data-field=date]")).toContainText("2026");
   await expect(page.getByText("Sample Tote Bag")).toBeVisible();
   await expect(page.getByText("prd_sample_tote")).toBeVisible();

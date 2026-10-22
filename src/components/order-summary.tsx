@@ -7,7 +7,13 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   return <Badge variant={orderStatusVariant(status)}>{orderStatusLabel(status)}</Badge>;
 }
 
-export function OrderSummary({ order }: { order: Order }) {
+export function OrderSummary({
+  order,
+  showFee = true,
+}: {
+  order: Order;
+  showFee?: boolean;
+}) {
   return (
     <div className="flex flex-col gap-4">
       <dl className="grid gap-3 sm:grid-cols-2">
@@ -29,10 +35,12 @@ export function OrderSummary({ order }: { order: Order }) {
           <dt className="text-muted-foreground">Amount</dt>
           <dd className="mt-1">{formatMoney(order.amount, order.currency)}</dd>
         </div>
-        <div data-field="fee">
-          <dt className="text-muted-foreground">Fee</dt>
-          <dd className="mt-1">{formatMoney(order.fee, order.currency)}</dd>
-        </div>
+        {showFee ? (
+          <div data-field="fee">
+            <dt className="text-muted-foreground">Fee</dt>
+            <dd className="mt-1">{formatMoney(order.fee, order.currency)}</dd>
+          </div>
+        ) : null}
       </dl>
       <ul className="flex flex-col gap-3 border-t pt-4">
         {order.items.map((item) => (

@@ -51,7 +51,7 @@ export function CheckoutSuccessPage() {
           <p data-field="store" className="text-muted-foreground">
             {session.data.storeName}
           </p>
-          <OrderSummary order={session.data.order} />
+          <OrderSummary order={session.data.order} showFee={false} />
         </div>
       ) : null}
     </CheckoutFrame>
