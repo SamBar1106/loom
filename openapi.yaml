@@ -375,6 +375,40 @@ paths:
           description: Deleted.
         "404":
           $ref: "#/components/responses/Error"
+  /v1/products/{productId}/image:
+    post:
+      tags: [Products]
+      operationId: uploadProductImage
+      summary: Upload a product image
+      description: |
+        Multipart body with one field, `file`. JPEG, PNG, WebP, or GIF, up to 5 MB.
+        The image is appended to the product media list. The response is the product.
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: JPEG, PNG, WebP, or GIF. 5 MB maximum.
+      responses:
+        "200":
+          description: Product with the uploaded image appended to media.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /v1/products/{productId}/variants:
     get:
       tags: [Variants]

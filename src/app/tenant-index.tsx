@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import { TenantLayout } from "@/app/tenant-context";
 import { PageSkeleton } from "@/components/query-state";
 import { useSession } from "@/lib/api/hooks";
@@ -6,6 +7,8 @@ import { StorefrontPage } from "@/pages/storefront-pages";
 
 export function TenantIndex() {
   const session = useSession();
+  const [params] = useSearchParams();
+  const previewShop = params.get("view") === "shop";
 
   if (session.isLoading) {
     return (
@@ -15,7 +18,7 @@ export function TenantIndex() {
     );
   }
 
-  if (session.data) {
+  if (session.data && !previewShop) {
     return (
       <TenantLayout>
         <DashboardPage />

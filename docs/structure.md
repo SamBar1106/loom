@@ -21,6 +21,8 @@ src/lib/preview-flags.ts     Preview switches for invite-only and rate limit
 src/lib/api/mock/auth.ts     Session, register, and Google mock routes
 src/lib/api/mock/dispatch.ts Path router that implements the contract
 src/lib/api/public-store.ts  Public catalog paths and POST /v1/public/checkout
+src/lib/api/product-image.ts Product image path and file checks
+src/lib/onboarding.ts        First-run checklist derived from API data
 src/lib/stripe-connect.ts    Stripe account status, balance, payouts, and onboarding handoff
 src/components/ui/           shadcn/ui components
 src/components/auth/         Sign-in card, password field, Google button
@@ -66,7 +68,9 @@ The header switcher keeps the current section when the destination tenant can sh
 
 ## API client
 
-`apiRequest` builds the query string and the `X-Tenant-Id` header. When `VITE_USE_MOCK` is `true` or `1`, `mockDispatch` returns a `Response`. Otherwise the same request is sent with `fetch` and `credentials: "include"` to `VITE_API_BASE`. An empty base is the same origin. `VITE_API_BASE_URL` is the previous name and applies only when `VITE_API_BASE` is unset. `.env.production` sets the mock flag off. Pages never import the mock database. Continue with Google assigns `window.location` to `{base}/v1/auth/google/start`. Accept payments reads `GET /v1/stripe/account`, `GET /v1/stripe/balance`, and `GET /v1/stripe/payouts`, and navigates to the URL from `POST /v1/stripe/onboarding-links`.
+`apiRequest` builds the query string and the `X-Tenant-Id` header. When `VITE_USE_MOCK` is `true` or `1`, `mockDispatch` returns a `Response`. Otherwise the same request is sent with `fetch` and `credentials: "include"` to `VITE_API_BASE`. An empty base is the same origin. `VITE_API_BASE_URL` is the previous name and applies only when `VITE_API_BASE` is unset. `.env.production` sets the mock flag off. Pages never import the mock database. Continue with Google assigns `window.location` to `{base}/v1/auth/google/start`. Accept payments reads `GET /v1/stripe/account`, `GET /v1/stripe/balance`, and `GET /v1/stripe/payouts`, and navigates to the URL from `POST /v1/stripe/onboarding-links`. Product image upload posts multipart field `file` to `POST /v1/products/{productId}/image` through `apiUpload`, which does not set `Content-Type` so the browser can add the multipart boundary.
+
+The home checklist reads store settings, the product list total, the Stripe account id, and the public catalog. Dismissal is stored in `localStorage` under `loom.onboarding.dismissed` and is not an API field. `/t/{slug}?view=shop` shows the public store while signed in.
 
 Signed-out visits to `/` redirect to `/sign-in`. Signed-out visits to `/t/:tenantSlug` show the public store. Admin sections under that slug still redirect to `/sign-in`. Checkout result pages and `/t/:tenantSlug/p/:productId` are outside the admin guard. A buyer can open them without an admin session. Dev and preview use SPA fallback and serve `index.html` for those paths, including a full reload of a production build. The header menu signs out with `DELETE /v1/auth/session`.
 

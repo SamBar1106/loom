@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/api/client";
+import { ApiError, apiRequest } from "@/lib/api/client";
 import { publicProductPath, publicProductsPath, startPublicCheckout } from "@/lib/api/public-store";
+import { shopSetupProgress, shopSetupSteps, type ShopSetupStep } from "@/lib/onboarding";
 import { loadStripeAccount, loadStripeBalance, loadStripePayouts, startStripeOnboarding } from "@/lib/stripe-connect";
 import type {
   Category,
@@ -349,4 +350,41 @@ export function useStripePayouts(tenantId: string) {
     queryKey: ["stripe-payouts", tenantId],
     queryFn: () => loadStripePayouts(tenantId, apiRequest),
   });
+}
+
+function isNotFound(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
+}
+
+export function useShopSetup(tenantId: string, slug: string): {
+  steps: ShopSetupStep[] | null;
+  progress: { completed: number; total: number } | null;
+  isLoading: boolean;
+  error: unknown;
+} {
+  const settings = useStoreSettings(tenantId);
+  const products = useProducts(tenantId, { page: 1, pageSize: 1 });
+  const stripe = useStripeAccount(tenantId);
+  const catalog = usePublicCatalog(slug);
+  const catalogMissing = isNotFound(catalog.error);
+  const catalogSettled = Boolean(catalog.data) || catalogMissing || Boolean(catalog.error);
+  const settingsData = settings.data;
+  const productsData = products.data;
+  const stripeData = stripe.data;
+  const steps =
+    settingsData && productsData && stripeData && catalogSettled
+      ? shopSetupSteps({
+          storeName: settingsData.storeName,
+          productCount: productsData.page.total,
+          stripeAccountId: stripeData.id,
+          publicProductCount: catalog.data?.data.length ?? 0,
+        })
+      : null;
+
+  return {
+    steps,
+    progress: steps ? shopSetupProgress(steps) : null,
+    isLoading: !steps && (settings.isLoading || products.isLoading || stripe.isLoading || catalog.isLoading),
+    error: settings.error ?? products.error ?? stripe.error ?? (catalog.error && !catalogMissing ? catalog.error : null),
+  };
 }

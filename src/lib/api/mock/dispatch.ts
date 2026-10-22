@@ -24,6 +24,7 @@ import type {
   VariantWrite,
 } from "@/lib/api/types";
 import { handleAuth, hasMockSession, resetAuthMock } from "@/lib/api/mock/auth";
+import { productImageRejection } from "@/lib/api/product-image";
 import { createSeed, type StoredOrder, type TenantBucket } from "@/lib/api/mock/seed";
 
 export type MockRequest = {
@@ -338,8 +339,40 @@ type Route = {
   tenant: boolean;
   /** Buyer checkout receipts do not require a session or X-Tenant-Id. */
   public?: boolean;
-  handle: (bucket: TenantBucket | null, match: RegExpMatchArray, request: MockRequest) => Response;
+  handle: (
+    bucket: TenantBucket | null,
+    match: RegExpMatchArray,
+    request: MockRequest,
+  ) => Response | Promise<Response>;
 };
+
+function imageFile(body: unknown): File | Response {
+  if (!(body instanceof FormData)) {
+    return invalid([{ field: "file", message: "Choose an image file." }]);
+  }
+  const value = body.get("file");
+  if (!(value instanceof File)) {
+    return invalid([{ field: "file", message: "Choose an image file." }]);
+  }
+  const message = productImageRejection(value);
+  if (message) return invalid([{ field: "file", message }]);
+  return value;
+}
+
+async function fileToDataUrl(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    let piece = "";
+    for (let offset = 0; offset < chunk.length; offset += 1) {
+      piece += String.fromCharCode(chunk[offset] ?? 0);
+    }
+    binary += piece;
+  }
+  return `data:${file.type};base64,${btoa(binary)}`;
+}
 
 function findStore(slug: string): TenantBucket | undefined {
   return [...buckets.values()].find((bucket) => bucket.tenant.slug === slug);
@@ -506,6 +539,27 @@ const routes: Route[] = [
       bucket.products.unshift(created);
       refreshCategoryCounts(bucket);
       return ok(created, 201);
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/v1\/products\/([^/]+)\/image$/,
+    tenant: true,
+    handle: async (bucket, match, request) => {
+      if (!bucket) return error(404, "tenant_not_found", "No tenant matches that id.");
+      const product = findProduct(bucket, decodeSegment(match[1] ?? ""));
+      if (!product) return error(404, "not_found", "Product was not found in this tenant.");
+      const file = imageFile(request.body);
+      if (file instanceof Response) return file;
+      const media: ProductMedia = {
+        id: nextId("med"),
+        url: await fileToDataUrl(file),
+        alt: file.name || product.title || "Product image",
+        position: product.media.length,
+      };
+      product.media = [...product.media, media];
+      product.updatedAt = hoursBeforeSampleNow(0);
+      return ok(product);
     },
   },
   {

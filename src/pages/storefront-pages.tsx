@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { PageSkeleton, QueryError } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { ApiError } from "@/lib/api/client";
 import { usePublicCatalog, usePublicCheckout, usePublicProduct } from "@/lib/api/hooks";
 import type { PublicProduct, PublicStore } from "@/lib/api/types";
 import { formatMoney } from "@/lib/format";
+import { tenantPath } from "@/lib/paths";
 import { isHttpUrl } from "@/lib/stripe-connect";
 import { usePageTitle } from "@/pages/use-page-title";
 
@@ -46,13 +47,20 @@ function isNotFound(error: unknown): boolean {
 
 export function StorefrontPage() {
   const { tenantSlug = "" } = useParams();
+  const [params] = useSearchParams();
   const catalog = usePublicCatalog(tenantSlug);
   const missing = isNotFound(catalog.error);
   const title = missing ? "Store not found" : (catalog.data?.store.name ?? "Store");
+  const preview = params.get("view") === "shop";
 
   return (
     <StoreFrame page="storefront" title={title}>
       <header className="flex flex-col gap-1">
+        {preview ? (
+          <Link to={tenantPath(tenantSlug)} className="text-sm">
+            Admin
+          </Link>
+        ) : null}
         <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
         {catalog.data ? <h2 className="text-sm text-muted-foreground">Products</h2> : null}
       </header>

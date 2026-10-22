@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTenant } from "@/app/tenant-context";
+import { ShopSetupCard } from "@/components/shop-setup";
 import { PageSkeleton, QueryError } from "@/components/query-state";
 import { Sparkline } from "@/components/sparkline";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +107,8 @@ export function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      <ShopSetupCard />
 
       {dashboard.isLoading ? <PageSkeleton /> : null}
       {dashboard.error ? <QueryError error={dashboard.error} /> : null}
