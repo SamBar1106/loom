@@ -1,18 +1,18 @@
 import {
   bullets,
-  contactEmailPlaceholder,
-  lastUpdatedPlaceholder,
+  contactEmail,
+  legalLastUpdated,
   link,
   paragraph,
   type LegalDocument,
 } from "@/content/legal-document";
 
-const contact = contactEmailPlaceholder;
+const contact = link(contactEmail, `mailto:${contactEmail}`);
 
 export const termsOfService: LegalDocument = {
   slug: "terms",
   title: "Terms of Service",
-  lastUpdated: lastUpdatedPlaceholder,
+  lastUpdated: legalLastUpdated,
   sections: [
     {
       id: "agreement",
@@ -100,16 +100,13 @@ export const termsOfService: LegalDocument = {
           "Buyers pay through Stripe. On a destination charge, Stripe processes the card payment and transfers the funds to the shop owner’s connected Stripe account. Loom does not hold buyer funds and does not store card numbers.",
         ),
         paragraph(
-          "On each successful charge, Loom charges the shop a platform fee of 2.9% of the charge amount plus $0.30, in United States dollars. Stripe collects that fee as part of the destination charge. The rest of the payment is paid to the shop owner’s connected Stripe account, and Stripe pays the shop owner out on Stripe’s payout schedule. A payment that does not succeed does not incur the platform fee.",
-        ),
-        paragraph(
-          "Stripe may charge its own fees under the Stripe agreements that apply to Loom and to the shop. Those Stripe fees are separate from Loom’s platform fee.",
+          "On each successful charge, Loom charges the shop one transaction fee of 2.9% + 30¢, in United States dollars. That fee already includes payment-processor (Stripe) fees. Stripe collects this transaction fee as part of the destination charge and pays the remaining amount to the shop owner’s connected Stripe account. Stripe then pays the shop owner on Stripe’s payout schedule. A payment that does not succeed does not incur the transaction fee.",
         ),
         paragraph(
           "The shop owner must finish Stripe Connect onboarding before the shop can take payments and receive payouts, and must keep that Stripe account in good standing.",
         ),
         paragraph(
-          "If a charge is refunded in full, Loom returns the platform fee on that charge, except any part Stripe or a card network does not return. A partial refund reduces the platform fee by the same percentage as the refund, to the extent Stripe applies the refund that way.",
+          "If a charge is refunded in full, Loom returns the transaction fee on that charge. A partial refund reduces the transaction fee by the same percentage as the refund.",
         ),
       ],
     },
@@ -164,7 +161,7 @@ export const termsOfService: LegalDocument = {
           "To the fullest extent the law allows, Loom and its members, employees, and agents are not liable for indirect, incidental, special, consequential, or punitive damages, or for lost profits, lost revenue, lost data, or lost goodwill, arising out of the service or these terms.",
         ),
         paragraph(
-          "To the fullest extent the law allows, Loom’s total liability for all claims relating to the service or these terms is limited to the greater of the platform fees the shop paid Loom in the 12 months before the claim, or $100.",
+          "To the fullest extent the law allows, Loom’s total liability for all claims relating to the service or these terms is limited to the greater of the transaction fees the shop paid Loom in the 12 months before the claim, or $100.",
         ),
         paragraph(
           "These limits apply to shop owners and to buyers, in contract, tort, or any other claim, whether or not we knew the loss was possible. They apply only as far as the law allows. If the law does not allow a limit, that limit does not apply.",
@@ -176,7 +173,7 @@ export const termsOfService: LegalDocument = {
       heading: "Changes",
       blocks: [
         paragraph(
-          "We may change these terms, including the platform fee. We will post the updated terms on this page and change the Last updated date. If you have an account, we may also email the address on the account when a change is material.",
+          "We may change these terms, including the transaction fee. We will post the updated terms on this page and change the Last updated date. If you have an account, we may also email the address on the account when a change is material.",
         ),
         paragraph(
           "If you keep using Loom after the updated terms are posted, you agree to them. If you do not agree, stop using Loom. A shop owner who does not agree should email ",
@@ -190,7 +187,7 @@ export const termsOfService: LegalDocument = {
       heading: "Florida law",
       blocks: [
         paragraph(
-          "Florida law governs these terms and the service, without regard to conflict-of-law rules. You and Loom agree that the state and federal courts in Pinellas County, Florida are the exclusive venue for disputes about these terms or the service, and both sides consent to personal jurisdiction there. Either side may still bring an individual claim in small claims court in that county.",
+          "Florida law governs these terms and the service, without regard to conflict-of-law rules. The courts of Pinellas County, Florida are the venue for disputes about these terms or the service, and you and Loom consent to personal jurisdiction there.",
         ),
       ],
     },

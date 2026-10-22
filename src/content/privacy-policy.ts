@@ -1,18 +1,18 @@
 import {
   bullets,
-  contactEmailPlaceholder,
-  lastUpdatedPlaceholder,
+  contactEmail,
+  legalLastUpdated,
   link,
   paragraph,
   type LegalDocument,
 } from "@/content/legal-document";
 
-const contact = contactEmailPlaceholder;
+const contact = link(contactEmail, `mailto:${contactEmail}`);
 
 export const privacyPolicy: LegalDocument = {
   slug: "privacy",
   title: "Privacy Policy",
-  lastUpdated: lastUpdatedPlaceholder,
+  lastUpdated: legalLastUpdated,
   sections: [
     {
       id: "overview",
@@ -59,7 +59,7 @@ export const privacyPolicy: LegalDocument = {
           ["Create and protect accounts, including Google sign-in and email and password sign-in."],
           ["Run shops, catalogs, orders, and the inbox."],
           ["Send a buyer to Stripe Checkout and record whether the payment succeeded."],
-          ["Charge the platform fee described in the Terms of Service, and show orders and fees to the shop."],
+          ["Charge the transaction fee described in the Terms of Service, and show orders and fees to the shop."],
           ["Give the shop the order, including the buyer’s name, email, and shipping details, so the shop can fulfill it and handle refunds."],
           ["Detect abuse, fix problems, and protect shops and buyers."],
           ["Respond to you and meet legal duties, including tax and accounting duties on order records."],

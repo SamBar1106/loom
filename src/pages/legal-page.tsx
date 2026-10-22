@@ -3,8 +3,6 @@ import { SiteFooter, legalLinkClassName } from "@/components/layout/site-footer"
 import type { LegalBlock, LegalDocument, LegalText } from "@/content/legal-document";
 import { usePageTitle } from "@/pages/use-page-title";
 
-const draftBanner = "Draft — pending owner and legal review";
-
 function isInternalHref(href: string): boolean {
   return href.startsWith("/") && !href.startsWith("//");
 }
@@ -60,12 +58,6 @@ export function LegalDocumentPage({ document }: { document: LegalDocument }) {
   return (
     <div data-page={document.slug} className="flex min-h-svh flex-col bg-background text-foreground">
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6">
-        <p
-          role="status"
-          className="rounded-lg border border-warning-foreground/20 bg-warning px-4 py-3 text-sm font-medium text-warning-foreground"
-        >
-          {draftBanner}
-        </p>
         <header className="flex flex-col gap-2">
           <p className="font-heading text-sm font-medium tracking-tight text-muted-foreground">Loom</p>
           <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">{document.title}</h1>

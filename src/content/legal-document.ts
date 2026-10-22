@@ -17,9 +17,9 @@ export type LegalDocument = {
   readonly sections: readonly LegalSection[];
 };
 
-export const lastUpdatedPlaceholder = "[DATE]";
+export const legalLastUpdated = "October 22, 2026";
 
-export const contactEmailPlaceholder = "[CONTACT EMAIL]";
+export const contactEmail = "samuelbarrios1106@gmail.com";
 
 export function paragraph(...text: LegalText[]): LegalBlock {
   return { type: "paragraph", text };
