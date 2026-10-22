@@ -40,7 +40,7 @@ export const privacyPolicy: LegalDocument = {
           "Orders. When a buyer checks out, we collect the buyer’s name, email, and shipping details the order needs, along with the products, quantities, amounts, and order status. Stripe Checkout collects the buyer details together with the payment. Loom receives the name, email, shipping details, and order contents so the shop can fulfill the order.",
         ),
         paragraph(
-          "Payment data. Stripe handles payment card data. Loom does not store card numbers. From Stripe, we receive the payment status, amount, currency, and Stripe identifiers for the charge and for the shop’s connected account. We also store whether that connected account can take charges and receive payouts. Stripe, not Loom, collects the bank details used for payouts.",
+          "Payment data. Stripe handles payment card data. Loom does not store card numbers. Buyers pay only the shop’s listed price. Loom’s transaction fee of 2.9% + 30¢ per successful charge includes payment processing and is deducted from the shop owner’s payout. From Stripe, we receive the payment status, amount, currency, and Stripe identifiers for the charge and for the shop’s connected account. We also store whether that connected account can take charges and receive payouts. Stripe, not Loom, collects the bank details used for payouts.",
         ),
         paragraph(
           "Cookies and session. We use a cookie to keep a shop owner signed in, and a cookie that remembers the admin sidebar. Those are described under Cookies and sign-in.",
@@ -59,7 +59,7 @@ export const privacyPolicy: LegalDocument = {
           ["Create and protect accounts, including Google sign-in and email and password sign-in."],
           ["Run shops, catalogs, orders, and the inbox."],
           ["Send a buyer to Stripe Checkout and record whether the payment succeeded."],
-          ["Charge the transaction fee described in the Terms of Service, and show orders and fees to the shop."],
+          ["Deduct the transaction fee from the shop owner’s payout, as described in the Terms of Service, and show orders and fees to the shop."],
           ["Give the shop the order, including the buyer’s name, email, and shipping details, so the shop can fulfill it and handle refunds."],
           ["Detect abuse, fix problems, and protect shops and buyers."],
           ["Respond to you and meet legal duties, including tax and accounting duties on order records."],

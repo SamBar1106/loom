@@ -97,16 +97,16 @@ export const termsOfService: LegalDocument = {
       heading: "Fees and payouts",
       blocks: [
         paragraph(
-          "Buyers pay through Stripe. On a destination charge, Stripe processes the card payment and transfers the funds to the shop owner’s connected Stripe account. Loom does not hold buyer funds and does not store card numbers.",
+          "Buyers pay only the price the shop lists. Loom does not add a fee to the buyer’s total. The buyer pays that listed price through Stripe. On a destination charge, Stripe processes the card payment. Loom does not hold buyer funds and does not store card numbers.",
         ),
         paragraph(
-          "On each successful charge, Loom charges the shop one transaction fee of 2.9% + 30¢, in United States dollars. That fee already includes payment-processor (Stripe) fees. Stripe collects this transaction fee as part of the destination charge and pays the remaining amount to the shop owner’s connected Stripe account. Stripe then pays the shop owner on Stripe’s payout schedule. A payment that does not succeed does not incur the transaction fee.",
+          "On each successful charge, Loom deducts one transaction fee of 2.9% + 30¢, in United States dollars, from the shop owner’s payout. That fee includes payment processing. Stripe collects the fee as part of the destination charge and pays the remaining amount to the shop owner’s connected Stripe account. Stripe then pays the shop owner on Stripe’s payout schedule. A payment that does not succeed does not incur the transaction fee.",
         ),
         paragraph(
           "The shop owner must finish Stripe Connect onboarding before the shop can take payments and receive payouts, and must keep that Stripe account in good standing.",
         ),
         paragraph(
-          "If a charge is refunded in full, Loom returns the transaction fee on that charge. A partial refund reduces the transaction fee by the same percentage as the refund.",
+          "If a charge is refunded in full, Loom returns the transaction fee that was deducted from the shop owner’s payout. A partial refund reduces that fee by the same percentage as the refund.",
         ),
       ],
     },
