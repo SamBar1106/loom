@@ -24,6 +24,8 @@ import type {
   VariantWrite,
 } from "@/lib/api/types";
 import { handleAuth, hasMockSession, resetAuthMock } from "@/lib/api/mock/auth";
+import { clearMockMedia, readMockMedia, registerMockMedia } from "@/lib/api/mock/media-files";
+import { productImageField, productImageRejection } from "@/lib/api/product-image";
 import { createSeed, type StoredOrder, type TenantBucket } from "@/lib/api/mock/seed";
 
 export type MockRequest = {
@@ -338,8 +340,36 @@ type Route = {
   tenant: boolean;
   /** Buyer checkout receipts do not require a session or X-Tenant-Id. */
   public?: boolean;
-  handle: (bucket: TenantBucket | null, match: RegExpMatchArray, request: MockRequest) => Response;
+  handle: (
+    bucket: TenantBucket | null,
+    match: RegExpMatchArray,
+    request: MockRequest,
+  ) => Response | Promise<Response>;
 };
+
+const imageExtensions: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+function imageExtension(type: string): string {
+  return imageExtensions[type] ?? "img";
+}
+
+function imageFile(body: unknown): File | Response {
+  if (!(body instanceof FormData)) {
+    return invalid([{ field: productImageField, message: "Choose an image file." }]);
+  }
+  const value = body.get(productImageField);
+  if (!(value instanceof File)) {
+    return invalid([{ field: productImageField, message: "Choose an image file." }]);
+  }
+  const message = productImageRejection(value);
+  if (message) return invalid([{ field: productImageField, message }]);
+  return value;
+}
 
 function findStore(slug: string): TenantBucket | undefined {
   return [...buckets.values()].find((bucket) => bucket.tenant.slug === slug);
@@ -506,6 +536,42 @@ const routes: Route[] = [
       bucket.products.unshift(created);
       refreshCategoryCounts(bucket);
       return ok(created, 201);
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/v1\/products\/([^/]+)\/images$/,
+    tenant: true,
+    handle: async (bucket, match, request) => {
+      if (!bucket) return error(404, "tenant_not_found", "No tenant matches that id.");
+      const product = findProduct(bucket, decodeSegment(match[1] ?? ""));
+      if (!product) return error(404, "not_found", "Product was not found in this tenant.");
+      const file = imageFile(request.body);
+      if (file instanceof Response) return file;
+      const name = `${nextId("med")}.${imageExtension(file.type)}`;
+      const media: ProductMedia = {
+        id: name.slice(0, name.lastIndexOf(".")),
+        url: registerMockMedia(name, new Uint8Array(await file.arrayBuffer()), file.type),
+        alt: file.name || product.title || "Product image",
+        position: product.media.length,
+      };
+      product.media = [...product.media, media];
+      product.updatedAt = hoursBeforeSampleNow(0);
+      return ok(media, 201);
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/media\/([^/]+)$/,
+    tenant: false,
+    public: true,
+    handle: (_bucket, match) => {
+      const stored = readMockMedia(`/media/${decodeSegment(match[1] ?? "")}`);
+      if (!stored) return error(404, "not_found", "Image was not found.");
+      return new Response(stored.bytes, {
+        status: 200,
+        headers: { "Content-Type": stored.type },
+      });
     },
   },
   {
@@ -1108,5 +1174,6 @@ export function resetMockStore(): void {
   buckets.clear();
   for (const bucket of createSeed()) buckets.set(bucket.tenant.id, bucket);
   idCounter = 100;
+  clearMockMedia();
   resetAuthMock();
 }

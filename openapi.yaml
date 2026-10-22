@@ -375,6 +375,78 @@ paths:
           description: Deleted.
         "404":
           $ref: "#/components/responses/Error"
+  /v1/products/{productId}/images:
+    post:
+      tags: [Products]
+      operationId: uploadProductImage
+      summary: Upload a product image
+      description: |
+        Multipart body with one field, `file`. JPEG, PNG, WebP, or GIF, up to 5 MB.
+        The file is stored and served at `GET /media/{name}`. That path is saved
+        on the product as the new media item's `url`. The response is the media item.
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: JPEG, PNG, WebP, or GIF. 5 MB maximum.
+      responses:
+        "201":
+          description: Media item appended to the product. `url` is `/media/{name}`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Media"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /media/{name}:
+    get:
+      tags: [Products]
+      operationId: getProductMediaFile
+      summary: Product image bytes
+      description: |
+        Public file for a product media `url`. No session cookie and no
+        `X-Tenant-Id`. `{name}` is the stored file name, not a product id.
+      security: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Image bytes.
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            image/gif:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/Error"
   /v1/products/{productId}/variants:
     get:
       tags: [Variants]

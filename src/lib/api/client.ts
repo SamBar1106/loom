@@ -1,5 +1,7 @@
 import type { ApiErrorBody, ApiErrorDetail } from "@/lib/api/types";
 import { mockDispatch } from "@/lib/api/mock/dispatch";
+import { mockMediaObjectUrl } from "@/lib/api/mock/media-files";
+import { productImageField } from "@/lib/api/product-image";
 
 /**
  * VITE_API_BASE is the API origin. Empty means the same origin as this app.
@@ -61,6 +63,23 @@ function queryString(query: ApiRequest["query"]): URLSearchParams {
   return params;
 }
 
+async function readResponse<T>(response: Response): Promise<T> {
+  if (response.status === 204) return undefined as T;
+
+  const text = await response.text();
+  const payload = text ? (JSON.parse(text) as T | ApiErrorBody) : null;
+  if (!response.ok) {
+    const body = payload as ApiErrorBody | null;
+    throw new ApiError(
+      response.status,
+      body?.error?.code ?? "request_failed",
+      body?.error?.message ?? response.statusText,
+      body?.error?.details ?? [],
+    );
+  }
+  return payload as T;
+}
+
 export async function apiRequest<T>(path: string, options: ApiRequest = {}): Promise<T> {
   const method = options.method ?? "GET";
   const params = queryString(options.query);
@@ -84,18 +103,37 @@ export async function apiRequest<T>(path: string, options: ApiRequest = {}): Pro
         credentials: "include",
       });
 
-  if (response.status === 204) return undefined as T;
+  return readResponse<T>(response);
+}
 
-  const text = await response.text();
-  const payload = text ? (JSON.parse(text) as T | ApiErrorBody) : null;
-  if (!response.ok) {
-    const body = payload as ApiErrorBody | null;
-    throw new ApiError(
-      response.status,
-      body?.error?.code ?? "request_failed",
-      body?.error?.message ?? response.statusText,
-      body?.error?.details ?? [],
-    );
-  }
-  return payload as T;
+/** Same-origin `/media/{name}` in production. The mock serves those bytes from memory. */
+export function resolveMediaUrl(url: string): string {
+  const objectUrl = mockMediaObjectUrl(url);
+  if (objectUrl) return objectUrl;
+  if (url.startsWith("/media/") && apiBaseUrl) return `${apiBaseUrl}${url}`;
+  return url;
+}
+
+export async function apiUpload<T>(path: string, options: { tenantId?: string | null; file: File }): Promise<T> {
+  const form = new FormData();
+  form.set(productImageField, options.file);
+  const headers = new Headers({ Accept: "application/json" });
+  if (options.tenantId) headers.set("X-Tenant-Id", options.tenantId);
+
+  const response = useMockApi
+    ? await mockDispatch({
+        method: "POST",
+        path,
+        query: new URLSearchParams(),
+        tenantId: options.tenantId ?? null,
+        body: form,
+      })
+    : await fetch(`${apiBaseUrl}${path}`, {
+        method: "POST",
+        headers,
+        body: form,
+        credentials: "include",
+      });
+
+  return readResponse<T>(response);
 }

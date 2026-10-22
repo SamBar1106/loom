@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { resolveMediaUrl } from "@/lib/api/client";
 import { useCategories, useProducts } from "@/lib/api/hooks";
 import type { InventoryStatus, ProductType } from "@/lib/api/types";
 import { formatMoney } from "@/lib/format";
@@ -234,7 +235,7 @@ export function ProductsPage() {
                         >
                           {item.thumbnailUrl ? (
                             <img
-                              src={item.thumbnailUrl}
+                              src={resolveMediaUrl(item.thumbnailUrl)}
                               alt=""
                               className="size-12 rounded-lg object-cover"
                             />

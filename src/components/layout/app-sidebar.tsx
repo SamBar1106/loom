@@ -37,15 +37,15 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { useTenant } from "@/app/tenant-context";
-import { useDashboard, useInbox } from "@/lib/api/hooks";
+import { useInbox, useShopSetup } from "@/lib/api/hooks";
 import { isSection, tenantPath } from "@/lib/paths";
 
 export function AppSidebar() {
   const { tenant } = useTenant();
   const { pathname } = useLocation();
-  const dashboard = useDashboard(tenant.id, "today");
+  const shop = useShopSetup(tenant.id, tenant.slug);
   const inbox = useInbox(tenant.id);
-  const setup = dashboard.data?.setup ?? { completed: 2, total: 8 };
+  const setup = shop.progress;
   const unread = inbox.data?.unreadCount ?? 0;
   const home = tenantPath(tenant.slug);
   const products = tenantPath(tenant.slug, "products");
@@ -61,11 +61,14 @@ export function AppSidebar() {
           <div className="min-w-0">
             <p className="font-heading text-base font-semibold">Loom</p>
             <p className="truncate text-xs text-muted-foreground">
-              Setup {setup.completed} of {setup.total} tasks
+              {setup ? `Setup ${setup.completed} of ${setup.total} tasks` : "Setup"}
             </p>
           </div>
         </div>
-        <Progress value={(setup.completed / setup.total) * 100} aria-label="Setup progress" />
+        <Progress
+          value={setup && setup.total > 0 ? (setup.completed / setup.total) * 100 : 0}
+          aria-label="Setup progress"
+        />
         <DropdownMenu>
           <DropdownMenuTrigger
             render={<Button className="w-full justify-between" />}

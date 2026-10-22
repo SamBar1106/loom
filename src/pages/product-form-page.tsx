@@ -36,9 +36,10 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { ApiError, apiRequest } from "@/lib/api/client";
+import { ApiError, apiRequest, apiUpload, resolveMediaUrl } from "@/lib/api/client";
 import { useCategories, useDeleteProduct, useProduct } from "@/lib/api/hooks";
-import type { Product, ProductPatch, ProductType } from "@/lib/api/types";
+import { productImagePath } from "@/lib/api/product-image";
+import type { Product, ProductMedia, ProductPatch, ProductType } from "@/lib/api/types";
 import { formatMoney } from "@/lib/format";
 import { tenantPath } from "@/lib/paths";
 import { usePageTitle } from "@/pages/use-page-title";
@@ -182,6 +183,7 @@ function ProductEditor({
   const [baseline, setBaseline] = useState(() => snapshot(initial));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
@@ -305,6 +307,31 @@ function ProductEditor({
     const parsed = JSON.parse(baseline) as Draft;
     setDraft(parsed);
     setFieldErrors({});
+  }
+
+  async function uploadImage(file: File) {
+    if (!productId) return;
+    setUploading(true);
+    try {
+      const added = await apiUpload<ProductMedia>(productImagePath(productId), { tenantId: tenant.id, file });
+      const item = { url: added.url, alt: added.alt };
+      setDraft((current) => ({ ...current, media: [...current.media, item] }));
+      setBaseline((current) => {
+        const parsed = JSON.parse(current) as Draft;
+        return snapshot({ ...parsed, media: [...parsed.media, item] });
+      });
+      queryClient.setQueryData<Product>(["product", tenant.id, productId], (current) =>
+        current ? { ...current, media: [...current.media, added] } : current,
+      );
+      await queryClient.invalidateQueries({ queryKey: ["products", tenant.id] });
+      toast.success("Image uploaded.");
+    } catch (error) {
+      const detail = error instanceof ApiError ? error.details[0]?.message : undefined;
+      const message = error instanceof ApiError ? error.message : "Could not upload this image.";
+      toast.error(detail || message);
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
@@ -497,13 +524,13 @@ function ProductEditor({
           <Card>
             <CardHeader>
               <CardTitle>Media</CardTitle>
-              <CardDescription>Files stay in this browser session.</CardDescription>
+              <CardDescription>Upload an image or add a URL.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {draft.media.map((item, index) => (
                   <div key={`${item.url}-${index}`} className="relative">
-                    <img src={item.url} alt={item.alt} className="aspect-4/3 w-full rounded-lg object-cover" />
+                    <img src={resolveMediaUrl(item.url)} alt={item.alt} className="aspect-4/3 w-full rounded-lg object-cover" />
                     <Button
                       type="button"
                       variant="secondary"
@@ -518,23 +545,23 @@ function ProductEditor({
                 ))}
                 <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-sm text-muted-foreground">
                   <ImagePlusIcon />
-                  Drop a file or browse
+                  {uploading ? "Uploading…" : "Upload image"}
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
                     className="sr-only"
+                    aria-label="Upload image"
+                    disabled={creating || uploading}
                     onChange={(event) => {
                       const file = event.target.files?.[0];
+                      event.target.value = "";
                       if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        update("media", [...draft.media, { url: String(reader.result), alt: file.name }]);
-                      };
-                      reader.readAsDataURL(file);
+                      void uploadImage(file);
                     }}
                   />
                 </label>
               </div>
+              {creating ? <p className="text-sm text-muted-foreground">Save the product before adding an image.</p> : null}
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   aria-label="Image URL"

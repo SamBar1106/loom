@@ -1,15 +1,16 @@
 import { useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { PageSkeleton, QueryError } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { ApiError } from "@/lib/api/client";
+import { ApiError, resolveMediaUrl } from "@/lib/api/client";
 import { usePublicCatalog, usePublicCheckout, usePublicProduct } from "@/lib/api/hooks";
 import type { PublicProduct, PublicStore } from "@/lib/api/types";
 import { formatMoney } from "@/lib/format";
+import { tenantPath } from "@/lib/paths";
 import { isHttpUrl } from "@/lib/stripe-connect";
 import { usePageTitle } from "@/pages/use-page-title";
 
@@ -46,13 +47,20 @@ function isNotFound(error: unknown): boolean {
 
 export function StorefrontPage() {
   const { tenantSlug = "" } = useParams();
+  const [params] = useSearchParams();
   const catalog = usePublicCatalog(tenantSlug);
   const missing = isNotFound(catalog.error);
   const title = missing ? "Store not found" : (catalog.data?.store.name ?? "Store");
+  const preview = params.get("view") === "shop";
 
   return (
     <StoreFrame page="storefront" title={title}>
       <header className="flex flex-col gap-1">
+        {preview ? (
+          <Link to={tenantPath(tenantSlug)} className="text-sm">
+            Admin
+          </Link>
+        ) : null}
         <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
         {catalog.data ? <h2 className="text-sm text-muted-foreground">Products</h2> : null}
       </header>
@@ -78,7 +86,7 @@ function ProductCard({ storeSlug, product }: { storeSlug: string; product: Publi
       <CardHeader>
         {product.imageUrl ? (
           <img
-            src={product.imageUrl}
+            src={resolveMediaUrl(product.imageUrl)}
             alt={product.imageAlt ?? product.title}
             className="aspect-4/3 w-full rounded-lg object-cover"
           />
@@ -158,7 +166,7 @@ function ProductDetail({
     <div className="grid gap-6 md:grid-cols-2">
       {product.imageUrl ? (
         <img
-          src={product.imageUrl}
+          src={resolveMediaUrl(product.imageUrl)}
           alt={product.imageAlt ?? product.title}
           className="aspect-4/3 w-full rounded-xl object-cover"
         />
