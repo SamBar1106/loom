@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
+import { SiteFooter, legalLinkClassName } from "@/components/layout/site-footer";
 import { PageSkeleton, QueryError } from "@/components/query-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,9 +25,10 @@ function StoreFrame({
 }) {
   usePageTitle(title);
   return (
-    <main data-page={page} className="min-h-svh bg-background px-4 py-8 text-foreground sm:px-6">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">{children}</div>
-    </main>
+    <div data-page={page} className="flex min-h-svh flex-col bg-background text-foreground">
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">{children}</main>
+      <SiteFooter />
+    </div>
   );
 }
 
@@ -185,6 +187,18 @@ function ProductDetail({
         <Button className="w-fit" disabled={outOfStock || checkout.isPending} onClick={() => void buy()}>
           Buy
         </Button>
+        <p className="text-sm text-muted-foreground">
+          The shop is the seller and handles refunds and taxes. Stripe processes the payment. Loom does not store
+          card numbers. See the{" "}
+          <Link className={legalLinkClassName} to="/terms">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link className={legalLinkClassName} to="/privacy">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );

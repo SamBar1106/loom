@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuthDivider, AuthScreen, authLinkClassName } from "@/components/auth/auth-screen";
+import { legalLinkClassName } from "@/components/layout/site-footer";
 import { GoogleButton } from "@/components/auth/google-button";
 import { PasswordField } from "@/components/auth/password-field";
 import { Button } from "@/components/ui/button";
@@ -189,6 +190,17 @@ export function SignUpPage() {
           error={errors.confirm}
           onChange={setConfirm}
         />
+        <p className="text-center text-sm text-muted-foreground">
+          By creating an account, you agree to the{" "}
+          <Link className={legalLinkClassName} to="/terms">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link className={legalLinkClassName} to="/privacy">
+            Privacy Policy
+          </Link>
+          .
+        </p>
         <Button type="submit" className="mt-1 w-full" disabled={register.isPending}>
           Create account
         </Button>
