@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { OrderSummary } from "@/components/order-summary";
 import { PageSkeleton, QueryError } from "@/components/query-state";
 import { useCheckoutSession } from "@/lib/api/hooks";
@@ -18,15 +19,18 @@ function CheckoutFrame({
   usePageTitle(title);
 
   return (
-    <main data-page={page} className="flex min-h-svh bg-background px-4 py-6 text-foreground sm:px-6">
-      <div className="m-auto flex w-full max-w-lg flex-col">
-        <div className="rounded-xl border bg-card p-8 text-card-foreground shadow-sm sm:p-10">
-          <p className="font-heading text-2xl font-semibold tracking-tight">Loom</p>
-          <h1 className="mt-6 font-heading text-xl font-semibold tracking-tight">{title}</h1>
-          <div className="mt-6 flex flex-col gap-4">{children}</div>
+    <div data-page={page} className="flex min-h-svh flex-col bg-background text-foreground">
+      <main className="flex flex-1 px-4 py-6 sm:px-6">
+        <div className="m-auto flex w-full max-w-lg flex-col">
+          <div className="rounded-xl border bg-card p-8 text-card-foreground shadow-sm sm:p-10">
+            <p className="font-heading text-2xl font-semibold tracking-tight">Loom</p>
+            <h1 className="mt-6 font-heading text-xl font-semibold tracking-tight">{title}</h1>
+            <div className="mt-6 flex flex-col gap-4">{children}</div>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+      <SiteFooter />
+    </div>
   );
 }
 

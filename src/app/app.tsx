@@ -2,12 +2,15 @@ import { Route, Routes } from "react-router-dom";
 import { RequireAuth } from "@/app/require-auth";
 import { TenantIndex } from "@/app/tenant-index";
 import { TenantLayout } from "@/app/tenant-context";
+import { privacyPolicy } from "@/content/privacy-policy";
+import { termsOfService } from "@/content/terms-of-service";
 import { CategoriesPage } from "@/pages/categories-page";
 import { CheckoutCancelPage, CheckoutSuccessPage } from "@/pages/checkout-pages";
 import { ForgotPasswordPage } from "@/pages/forgot-password-page";
 import { GoogleStartPage } from "@/pages/google-start-page";
 import { InboxPage } from "@/pages/inbox-page";
 import { InventoryPage } from "@/pages/inventory-page";
+import { LegalDocumentPage } from "@/pages/legal-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { OrderDetailPage } from "@/pages/order-detail-page";
 import { OrdersPage } from "@/pages/orders-page";
@@ -22,6 +25,8 @@ import { StoreProductPage } from "@/pages/storefront-pages";
 export function App() {
   return (
     <Routes>
+      <Route path="/terms" element={<LegalDocumentPage document={termsOfService} />} />
+      <Route path="/privacy" element={<LegalDocumentPage document={privacyPolicy} />} />
       <Route path="/sign-in" element={<SignInPage />} />
       <Route path="/sign-up" element={<SignUpPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />

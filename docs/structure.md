@@ -25,15 +25,19 @@ src/lib/stripe-connect.ts    Stripe account status and onboarding handoff
 src/components/ui/           shadcn/ui components
 src/components/auth/         Sign-in card, password field, Google button
 src/components/layout/       Sidebar, header, shell
-src/pages/                   Sign-in, create account, home, products, edit,
-                             inventory, categories, orders, order detail,
-                             checkout result, inbox, settings, payments
+src/content/                 Terms of Service and Privacy Policy text
+src/pages/                   Sign-in, create account, terms, privacy, home,
+                             products, edit, inventory, categories, orders,
+                             order detail, checkout result, inbox, settings,
+                             payments
 ```
 
 ## Routes
 
 | Path | Screen |
 | --- | --- |
+| `/terms` | Terms of Service |
+| `/privacy` | Privacy Policy |
 | `/sign-in` | Email and password sign-in |
 | `/sign-up` | Create account |
 | `/forgot-password` | Placeholder. Reset is not available |
@@ -68,7 +72,7 @@ The header switcher keeps the current section when the destination tenant can sh
 
 `apiRequest` builds the query string and the `X-Tenant-Id` header. When `VITE_USE_MOCK` is `true` or `1`, `mockDispatch` returns a `Response`. Otherwise the same request is sent with `fetch` and `credentials: "include"` to `VITE_API_BASE`. An empty base is the same origin. `VITE_API_BASE_URL` is the previous name and applies only when `VITE_API_BASE` is unset. `.env.production` sets the mock flag off. Pages never import the mock database. Continue with Google assigns `window.location` to `{base}/v1/auth/google/start`. Accept payments reads `GET /v1/stripe/account` and navigates to the URL from `POST /v1/stripe/onboarding-links`.
 
-Signed-out visits to `/` redirect to `/sign-in`. Signed-out visits to `/t/:tenantSlug` show the public store. Admin sections under that slug still redirect to `/sign-in`. Checkout result pages and `/t/:tenantSlug/p/:productId` are outside the admin guard. A buyer can open them without an admin session. Dev and preview use SPA fallback and serve `index.html` for those paths, including a full reload of a production build. The header menu signs out with `DELETE /v1/auth/session`.
+Signed-out visits to `/` redirect to `/sign-in`. Signed-out visits to `/t/:tenantSlug` show the public store. Admin sections under that slug still redirect to `/sign-in`. `/terms`, `/privacy`, checkout result pages, and `/t/:tenantSlug/p/:productId` are outside the admin guard. A buyer can open them without an admin session. Dev and preview use SPA fallback and serve `index.html` for those paths, including a full reload of a production build. The header menu signs out with `DELETE /v1/auth/session`.
 
 ## Sample data
 
