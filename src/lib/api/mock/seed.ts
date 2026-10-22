@@ -8,6 +8,8 @@ import type {
   PaymentsSettings,
   Product,
   StripeAccount,
+  StripeBalance,
+  StripePayout,
   ProductOption,
   ProductType,
   ProductVariant,
@@ -29,6 +31,8 @@ export type TenantBucket = {
   stripe: StripeAccount;
   /** How many times this tenant has created a Stripe account in the mock. */
   stripeCreates: number;
+  stripeBalance: StripeBalance;
+  stripePayouts: StripePayout[];
   categories: Category[];
   products: Product[];
   orders: StoredOrder[];
@@ -616,6 +620,8 @@ export function createSeed(): TenantBucket[] {
       detailsSubmitted: false,
     },
     stripeCreates: 0,
+    stripeBalance: { available: [], pending: [] },
+    stripePayouts: [],
     categories: categories([
       { id: "cat_apparel", name: "Apparel" },
       { id: "cat_accessories", name: "Accessories" },
@@ -767,6 +773,28 @@ export function createSeed(): TenantBucket[] {
       detailsSubmitted: true,
     },
     stripeCreates: 0,
+    stripeBalance: {
+      available: [{ amount: "186.40", currency: "USD" }],
+      pending: [{ amount: "24.00", currency: "USD" }],
+    },
+    stripePayouts: [
+      {
+        id: "po_sample_h1",
+        amount: "120.00",
+        currency: "USD",
+        status: "paid",
+        arrivalDate: hoursBeforeSampleNow(48),
+        createdAt: hoursBeforeSampleNow(72),
+      },
+      {
+        id: "po_sample_h2",
+        amount: "40.00",
+        currency: "USD",
+        status: "in_transit",
+        arrivalDate: hoursBeforeSampleNow(-30),
+        createdAt: hoursBeforeSampleNow(6),
+      },
+    ],
     categories: categories([
       { id: "cat_outdoor", name: "Outdoor" },
       { id: "cat_decor", name: "Decor" },

@@ -988,6 +988,11 @@ const routes: Route[] = [
         payoutsEnabled: false,
         detailsSubmitted: false,
       };
+      bucket.stripeBalance = {
+        available: [{ amount: "0.00", currency: "USD" }],
+        pending: [{ amount: "0.00", currency: "USD" }],
+      };
+      bucket.stripePayouts = [];
       return ok({ ...bucket.stripe }, 201);
     },
   },
@@ -1004,6 +1009,35 @@ const routes: Route[] = [
       if (linkBody instanceof Response) return linkBody;
       return ok({
         url: sampleOnboardingUrl(bucket.stripe.id, bucket.stripeCreates, linkBody.returnUrl),
+      });
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/v1\/stripe\/balance$/,
+    tenant: true,
+    handle: (bucket) => {
+      if (!bucket) return error(404, "tenant_not_found", "No tenant matches that id.");
+      if (!bucket.stripe.id) return error(404, "not_found", "No Stripe account is connected.");
+      return ok({
+        available: bucket.stripeBalance.available.map((row) => ({ ...row })),
+        pending: bucket.stripeBalance.pending.map((row) => ({ ...row })),
+      });
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/v1\/stripe\/payouts$/,
+    tenant: true,
+    handle: (bucket, _match, request) => {
+      if (!bucket) return error(404, "tenant_not_found", "No tenant matches that id.");
+      if (!bucket.stripe.id) return error(404, "not_found", "No Stripe account is connected.");
+      const newest = [...bucket.stripePayouts].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const page = paginate(newest, request.query);
+      if (page instanceof Response) return page;
+      return ok({
+        data: page.data.map((row) => ({ ...row })),
+        page: page.page,
       });
     },
   },

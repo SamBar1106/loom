@@ -116,6 +116,30 @@ export type StripeOnboardingLink = {
   url: string;
 };
 
+/** One currency bucket from the connected account balance. Major units, not cents. */
+export type StripeMoney = {
+  amount: string;
+  currency: string;
+};
+
+/** Available and pending amounts. No bank details and no secret keys. */
+export type StripeBalance = {
+  available: StripeMoney[];
+  pending: StripeMoney[];
+};
+
+export type StripePayoutStatus = "paid" | "pending" | "in_transit" | "canceled" | "failed";
+
+/** A connected-account payout. Destination bank details are omitted. */
+export type StripePayout = {
+  id: string;
+  amount: string;
+  currency: string;
+  status: StripePayoutStatus;
+  arrivalDate: string;
+  createdAt: string;
+};
+
 export type Category = {
   id: string;
   name: string;

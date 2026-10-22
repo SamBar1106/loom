@@ -127,7 +127,7 @@ Money fields are decimal strings with two fraction digits, such as `"32.00"`.
 | Inbox | `GET /v1/inbox`, `PATCH /v1/inbox/{threadId}` with `{ "unread": false }` |
 | Store settings | `GET` and `PATCH /v1/store-settings` |
 | Payments | `GET` and `PATCH /v1/payments-settings` |
-| Stripe | `GET /v1/stripe/account`, `POST /v1/stripe/accounts`, `POST /v1/stripe/onboarding-links` |
+| Stripe | `GET /v1/stripe/account`, `POST /v1/stripe/accounts`, `POST /v1/stripe/onboarding-links`, `GET /v1/stripe/balance`, `GET /v1/stripe/payouts` |
 
 Inventory status is derived. Available units are `onHand - reserved`. `0` is `out_of_stock`, `1` through `10` is `low_stock`, and anything higher is `in_stock`. Product list status uses the sum across that product's variants.
 
@@ -144,12 +144,33 @@ Accept payments uses the loom-api Stripe Connect routes (Accounts v2). The brows
 | `GET` | `/v1/stripe/account` | Status for the tenant in `X-Tenant-Id`. `id` is null when Stripe is not connected. |
 | `POST` | `/v1/stripe/accounts` | Creates the connected account. Idempotent: an existing account is returned unchanged. No request fields. |
 | `POST` | `/v1/stripe/onboarding-links` | Returns `{ "url" }`. Optional `returnUrl` and `refreshUrl` are the pages Stripe should send the browser back to. |
+| `GET` | `/v1/stripe/balance` | Available and pending amounts for the connected account. `404` `not_found` when Stripe is not connected. |
+| `GET` | `/v1/stripe/payouts` | Recent payouts, newest first. Paginated like other lists. `404` `not_found` when Stripe is not connected. An account with no payouts is `200` and an empty page. |
 
-`X-Tenant-Id` is the internal tenant id, such as `ten_daykodee`. A `404` with code `not_found` on `GET /v1/stripe/account` means there is no account yet. `tenant_not_found` means the tenant id is unknown. `POST /v1/stripe/onboarding-links` returns `409` when the tenant has no account.
+`X-Tenant-Id` is the internal tenant id, such as `ten_daykodee`. A `404` with code `not_found` on `GET /v1/stripe/account` means there is no account yet. The same code on `GET /v1/stripe/balance` and `GET /v1/stripe/payouts` means there is no connected account. `tenant_not_found` means the tenant id is unknown. `POST /v1/stripe/onboarding-links` returns `409` when the tenant has no account.
 
 The onboarding `url` is `http` or `https` and has no user or password. The page navigates the browser to it. Responses do not include secret keys, refresh tokens, or client secrets.
 
-In the mock, Daykodee has no account, so the button is Connect with Stripe. Harbor Sample already has `acct_sample_ten_harbor` with details submitted and charges still off, so the button is Continue onboarding. The sample onboarding URL is on `connect.stripe.com` and is not a live account link.
+In the mock, Daykodee has no account, so the button is Connect with Stripe. Balance and payouts are `404` `not_found`, and the page shows No balance and No payouts. Harbor Sample already has `acct_sample_ten_harbor` with details submitted and charges still off, so the button is Continue onboarding. Harbor's balance is available `186.40` USD and pending `24.00` USD, with payouts `po_sample_h1` (`120.00`, paid) and `po_sample_h2` (`40.00`, in transit). The sample onboarding URL is on `connect.stripe.com` and is not a live account link.
+
+## Stripe balance and payouts
+
+`GET /v1/stripe/balance` and `GET /v1/stripe/payouts` use the same session cookie and `X-Tenant-Id` header as the other Stripe routes. loom-api does not implement them yet. The mock does. A live API should match this section.
+
+Balance response:
+
+```json
+{
+  "available": [{ "amount": "186.40", "currency": "USD" }],
+  "pending": [{ "amount": "24.00", "currency": "USD" }]
+}
+```
+
+`amount` is a decimal string with two fraction digits in major units. Stripe's minor units are converted before the response (`18640` cents is `"186.40"`). `currency` is an uppercase ISO code. One object per currency. Empty arrays mean that group has no amount. The body does not include secret keys or bank account numbers.
+
+Payout list uses `page` (default 1) and `pageSize` (default 8, max 100). Newest `createdAt` first. A row is `id`, `amount`, `currency`, `status`, `arrivalDate`, and `createdAt`. `status` is `paid`, `pending`, `in_transit`, `canceled`, or `failed`. `arrivalDate` and `createdAt` are ISO-8601 timestamps. Destination bank details are omitted. An upstream Stripe failure is `request_failed`.
+
+Creating a connected account in the mock sets available and pending to `0.00` USD and an empty payout list.
 
 Orders require `X-Tenant-Id` with the internal tenant id. Status is `pending`, `paid`, or `failed`. Each order includes `items` (catalog `productId`, title, quantity, unit price), `amount`, `fee`, `buyerEmail`, and `createdAt`. The sample tenants return a few fictional orders so the Orders screen and the buyer receipt can be checked. One tenant cannot read another tenant's order.
 

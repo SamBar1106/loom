@@ -1037,6 +1037,64 @@ paths:
           $ref: "#/components/responses/Error"
         "409":
           $ref: "#/components/responses/Error"
+  /v1/stripe/balance:
+    get:
+      tags: [Payments]
+      operationId: getStripeBalance
+      summary: Available and pending balance for this tenant's connected account.
+      description: |
+        Requires the session cookie and X-Tenant-Id, same as GET /v1/stripe/account.
+        Returns the connected account's available and pending amounts in major units.
+        404 not_found when this tenant has no connected account. 404 tenant_not_found
+        when the tenant id is unknown. Amounts are decimal strings with two fraction
+        digits, not Stripe minor units. One object per currency. The body has no
+        secret keys and no bank account numbers. An upstream Stripe failure is
+        request_failed.
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      responses:
+        "200":
+          description: Available and pending amounts by currency.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeBalance"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/stripe/payouts:
+    get:
+      tags: [Payments]
+      operationId: listStripePayouts
+      summary: Recent payouts for this tenant's connected account.
+      description: |
+        Requires the session cookie and X-Tenant-Id, same as GET /v1/stripe/account.
+        Newest payouts come first. 404 not_found when this tenant has no connected
+        account. An account with no payouts is 200 and an empty page. page defaults
+        to 1. pageSize defaults to 8 and is 1 through 100. status is paid, pending,
+        in_transit, canceled, or failed. Amounts are decimal strings in major units.
+        Rows omit destination bank details and secret keys. An upstream Stripe
+        failure is request_failed.
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Payout page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripePayoutPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
 components:
   securitySchemes:
     sessionCookie:
@@ -1372,6 +1430,70 @@ components:
           type: string
           format: uri
           description: http(s) onboarding URL with no embedded user or password.
+    StripeMoney:
+      type: object
+      additionalProperties: false
+      required: [amount, currency]
+      description: Major-unit amount. Not a bank balance source and not a secret.
+      properties:
+        amount:
+          $ref: "#/components/schemas/Money"
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          examples: ["USD"]
+    StripeBalance:
+      type: object
+      additionalProperties: false
+      required: [available, pending]
+      description: Connected-account balance. No bank details and no secret keys.
+      properties:
+        available:
+          type: array
+          items:
+            $ref: "#/components/schemas/StripeMoney"
+        pending:
+          type: array
+          items:
+            $ref: "#/components/schemas/StripeMoney"
+    StripePayoutStatus:
+      type: string
+      enum: [paid, pending, in_transit, canceled, failed]
+    StripePayout:
+      type: object
+      additionalProperties: false
+      required: [id, amount, currency, status, arrivalDate, createdAt]
+      description: Connected-account payout. Destination bank details are omitted.
+      properties:
+        id:
+          type: string
+          description: Payout id. Not a secret.
+          examples: ["po_sample_h1"]
+        amount:
+          $ref: "#/components/schemas/Money"
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          examples: ["USD"]
+        status:
+          $ref: "#/components/schemas/StripePayoutStatus"
+        arrivalDate:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    StripePayoutPage:
+      type: object
+      additionalProperties: false
+      required: [data, page]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StripePayout"
+        page:
+          $ref: "#/components/schemas/PageMeta"
     Category:
       type: object
       required: [id, name, slug, productCount]

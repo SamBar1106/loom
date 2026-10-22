@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api/client";
 import { publicProductPath, publicProductsPath, startPublicCheckout } from "@/lib/api/public-store";
-import { loadStripeAccount, startStripeOnboarding } from "@/lib/stripe-connect";
+import { loadStripeAccount, loadStripeBalance, loadStripePayouts, startStripeOnboarding } from "@/lib/stripe-connect";
 import type {
   Category,
   CategoryWrite,
@@ -331,6 +331,22 @@ export function useStartStripeOnboarding(tenantId: string) {
       startStripeOnboarding({ tenantId, ...input, request: apiRequest }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["stripe-account", tenantId] });
+      await queryClient.invalidateQueries({ queryKey: ["stripe-balance", tenantId] });
+      await queryClient.invalidateQueries({ queryKey: ["stripe-payouts", tenantId] });
     },
+  });
+}
+
+export function useStripeBalance(tenantId: string) {
+  return useQuery({
+    queryKey: ["stripe-balance", tenantId],
+    queryFn: () => loadStripeBalance(tenantId, apiRequest),
+  });
+}
+
+export function useStripePayouts(tenantId: string) {
+  return useQuery({
+    queryKey: ["stripe-payouts", tenantId],
+    queryFn: () => loadStripePayouts(tenantId, apiRequest),
   });
 }

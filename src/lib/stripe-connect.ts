@@ -1,11 +1,21 @@
-import type { StripeAccount, StripeOnboardingLink } from "./api/types";
+import type {
+  Page,
+  StripeAccount,
+  StripeBalance,
+  StripeOnboardingLink,
+  StripePayout,
+  StripePayoutStatus,
+} from "./api/types";
 
 export type StripeConnectAction = "connect" | "continue" | "ready";
+
+export type StripeQueryValue = string | number | boolean | undefined | null;
 
 export type StripeRequest = {
   method?: string;
   tenantId?: string | null;
   body?: unknown;
+  query?: Record<string, StripeQueryValue>;
 };
 
 export type StripeRequester = <T>(path: string, options: StripeRequest) => Promise<T>;
@@ -89,4 +99,100 @@ export async function startStripeOnboarding(input: {
     throw new Error("Stripe returned an onboarding link this page will not open.");
   }
   return link.url;
+}
+
+export const stripePayoutListQuery = { page: 1, pageSize: 8 } as const;
+
+export type StripeAsyncView<T> =
+  | { status: "loading" }
+  | { status: "error"; error: unknown }
+  | { status: "empty" }
+  | { status: "ready"; value: T };
+
+export async function loadStripeBalance(tenantId: string, request: StripeRequester): Promise<StripeBalance | null> {
+  try {
+    return await request<StripeBalance>("/v1/stripe/balance", { tenantId });
+  } catch (error) {
+    if (isMissingStripeAccount(error)) return null;
+    throw error;
+  }
+}
+
+export async function loadStripePayouts(
+  tenantId: string,
+  request: StripeRequester,
+): Promise<Page<StripePayout> | null> {
+  try {
+    return await request<Page<StripePayout>>("/v1/stripe/payouts", {
+      tenantId,
+      query: { page: stripePayoutListQuery.page, pageSize: stripePayoutListQuery.pageSize },
+    });
+  } catch (error) {
+    if (isMissingStripeAccount(error)) return null;
+    throw error;
+  }
+}
+
+export function stripeBalanceView(input: {
+  isLoading: boolean;
+  error: unknown;
+  data: StripeBalance | null | undefined;
+}): StripeAsyncView<StripeBalance> {
+  if (input.isLoading) return { status: "loading" };
+  if (input.error) return { status: "error", error: input.error };
+  if (!input.data || (input.data.available.length === 0 && input.data.pending.length === 0)) {
+    return { status: "empty" };
+  }
+  return { status: "ready", value: input.data };
+}
+
+export function stripePayoutsView(input: {
+  isLoading: boolean;
+  error: unknown;
+  data: Page<StripePayout> | null | undefined;
+}): StripeAsyncView<StripePayout[]> {
+  if (input.isLoading) return { status: "loading" };
+  if (input.error) return { status: "error", error: input.error };
+  if (!input.data || input.data.data.length === 0) return { status: "empty" };
+  return { status: "ready", value: input.data.data };
+}
+
+export function stripePayoutStatusLabel(status: StripePayoutStatus): string {
+  switch (status) {
+    case "paid":
+      return "Paid";
+    case "pending":
+      return "Pending";
+    case "in_transit":
+      return "In transit";
+    case "canceled":
+      return "Canceled";
+    case "failed":
+      return "Failed";
+    default: {
+      const unreachable: never = status;
+      return unreachable;
+    }
+  }
+}
+
+export function stripePayoutStatusVariant(
+  status: StripePayoutStatus,
+): "positive" | "warning" | "secondary" | "destructive" {
+  switch (status) {
+    case "paid":
+      return "positive";
+    case "pending":
+      return "warning";
+    case "in_transit":
+      return "secondary";
+    case "canceled":
+      return "secondary";
+    case "failed":
+      return "destructive";
+    default: {
+      const unreachable: never = status;
+      return unreachable;
+    }
+  }
 }
